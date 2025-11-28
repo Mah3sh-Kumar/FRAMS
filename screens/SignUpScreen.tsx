@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { TextInput, Button, Text, Title, HelperText, SegmentedButtons, ActivityIndicator } from 'react-native-paper';
+import { TextInput, Button, Text, Title, HelperText, SegmentedButtons, ActivityIndicator, Banner } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth, SignUpPayload } from '../context/AuthContext';
 import { fetchClasses, checkEnrollmentNumberUnique } from '../lib/database';
 import { DEPARTMENTS, CLASS_LEVELS, BRANCHES } from '../lib/constants';
+import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'SignUp'>;
@@ -41,6 +42,8 @@ export default function SignUpScreen({ navigation }: Props) {
     // UI state
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showEmailVerificationBanner, setShowEmailVerificationBanner] = useState(false);
+    const [verificationEmail, setVerificationEmail] = useState('');
 
     // No need to load classes from database anymore - using predefined CLASS_LEVELS
 
@@ -133,18 +136,23 @@ export default function SignUpScreen({ navigation }: Props) {
             }
 
             console.log('🔵 Calling signUp function...');
-            const { error } = await signUp(payload);
-            console.log('🔵 signUp completed, error:', error);
+            const { error, requiresEmailVerification } = await signUp(payload);
+            console.log('🔵 signUp completed, error:', error, 'requiresEmailVerification:', requiresEmailVerification);
 
             if (error) {
                 console.log('❌ Signup error:', error);
                 Alert.alert('Signup Failed', error);
+                setIsSubmitting(false);
+            } else if (requiresEmailVerification) {
+                console.log('✅ Signup successful! Email verification required.');
+                setIsSubmitting(false);
+                // Navigate to email verification screen
+                navigation.navigate('EmailVerification', { email: payload.email });
             } else {
                 console.log('✅ Signup successful!');
                 Alert.alert('Success', 'Account created successfully!');
+                setIsSubmitting(false);
             }
-
-            setIsSubmitting(false);
         } catch (err: any) {
             console.error('❌ CRASH in handleSignUp:', err);
             console.error('❌ Error message:', err.message);
@@ -175,6 +183,26 @@ export default function SignUpScreen({ navigation }: Props) {
                 <View style={styles.content}>
                     <Title style={styles.title}>Create Account</Title>
                     <Text style={styles.subtitle}>Sign up to get started</Text>
+
+                    {/* Email Verification Banner */}
+                    {showEmailVerificationBanner && (
+                        <Banner
+                            visible={showEmailVerificationBanner}
+                            actions={[
+                                {
+                                    label: 'Got it',
+                                    onPress: () => setShowEmailVerificationBanner(false),
+                                },
+                            ]}
+                            icon="email-check-outline"
+                            style={styles.verificationBanner}
+                        >
+                            <Text style={styles.bannerText}>
+                                <Text style={styles.bannerTitle}>Verify your email{'\n'}</Text>
+                                We've sent a verification link to {verificationEmail}. Please check your inbox and click the link to activate your account.
+                            </Text>
+                        </Banner>
+                    )}
 
                     <View style={styles.form}>
                         {/* Role Selection */}
@@ -259,15 +287,12 @@ export default function SignUpScreen({ navigation }: Props) {
                                 />
                             }
                         />
+                        <PasswordStrengthIndicator password={password} />
                         {errors.password ? (
                             <HelperText type="error" visible={!!errors.password}>
                                 {errors.password}
                             </HelperText>
-                        ) : (
-                            <HelperText type="info" visible={!errors.password}>
-                                Minimum 8 characters
-                            </HelperText>
-                        )}
+                        ) : null}
 
                         <TextInput
                             label="Confirm Password"
@@ -490,5 +515,20 @@ const styles = StyleSheet.create({
     signInText: {
         fontSize: 14,
         color: '#666',
+    },
+    verificationBanner: {
+        marginBottom: 16,
+        backgroundColor: '#e3f2fd',
+        borderRadius: 8,
+    },
+    bannerText: {
+        fontSize: 14,
+        color: '#333',
+        lineHeight: 20,
+    },
+    bannerTitle: {
+        fontWeight: 'bold',
+        fontSize: 15,
+        color: '#1976d2',
     },
 });

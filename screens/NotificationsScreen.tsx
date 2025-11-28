@@ -1,77 +1,82 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Title, Card, Text, IconButton, Button, Chip } from 'react-native-paper';
+import { useAuth } from '../context/AuthContext';
+import {
+    fetchNotifications,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    subscribeToNotifications,
+    type Notification,
+} from '../lib/notifications';
 import { colors, spacing, typography, shadows } from '../lib/theme';
 import EmptyState from '../components/EmptyState';
+import LoadingSpinner from '../components/LoadingSpinner';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'Notifications'>;
 
-interface Notification {
-    id: string;
-    type: 'assignment' | 'grade' | 'attendance' | 'general';
-    title: string;
-    message: string;
-    date: string;
-    isRead: boolean;
-}
-
 export default function NotificationsScreen({ navigation }: Props) {
+    const { session } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchNotifications();
-    }, []);
+        loadNotifications();
 
-    const fetchNotifications = async () => {
-        // TODO: Fetch from database when notification system is implemented
-        // For now, showing sample notifications
-        const sampleNotifications: Notification[] = [
-            {
-                id: '1',
-                type: 'assignment',
-                title: 'New Assignment Posted',
-                message: 'Mathematics: Chapter 5 Problems - Due in 3 days',
-                date: new Date().toISOString(),
-                isRead: false,
-            },
-            {
-                id: '2',
-                type: 'grade',
-                title: 'Assignment Graded',
-                message: 'Your Physics Lab Report has been graded: 85/100',
-                date: new Date(Date.now() - 86400000).toISOString(),
-                isRead: true,
-            },
-            {
-                id: '3',
-                type: 'attendance',
-                title: 'Attendance Alert',
-                message: 'Your attendance in Chemistry is below 75%',
-                date: new Date(Date.now() - 172800000).toISOString(),
-                isRead: false,
-            },
-        ];
-        setNotifications(sampleNotifications);
+        // Subscribe to real-time updates
+        const userId = session?.user?.id;
+        if (!userId) return;
+
+        const unsubscribe = subscribeToNotifications(userId, (newNotification) => {
+            setNotifications((prev) => [newNotification, ...prev]);
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, [session]);
+
+    const loadNotifications = async () => {
+        setLoading(true);
+        const data = await fetchNotifications();
+        setNotifications(data);
+        setLoading(false);
     };
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchNotifications();
+        await loadNotifications();
         setRefreshing(false);
     };
 
-    const markAsRead = (id: string) => {
-        setNotifications(prev =>
-            prev.map(notif =>
-                notif.id === id ? { ...notif, isRead: true } : notif
-            )
-        );
+    const handleMarkAsRead = async (id: string) => {
+        const success = await markAsRead(id);
+        if (success) {
+            setNotifications(prev =>
+                prev.map(notif =>
+                    notif.id === id ? { ...notif, read: true } : notif
+                )
+            );
+        }
     };
 
-    const clearAll = () => {
-        setNotifications([]);
+    const handleMarkAllAsRead = async () => {
+        const success = await markAllAsRead();
+        if (success) {
+            setNotifications(prev =>
+                prev.map(notif => ({ ...notif, read: true }))
+            );
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        const success = await deleteNotification(id);
+        if (success) {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        }
     };
 
     const getIconName = (type: string) => {
@@ -123,9 +128,9 @@ export default function NotificationsScreen({ navigation }: Props) {
         <Card
             style={[
                 styles.notificationCard,
-                !item.isRead && styles.unreadCard,
+                !item.read && styles.unreadCard,
             ]}
-            onPress={() => markAsRead(item.id)}
+            onPress={() => handleMarkAsRead(item.id)}
         >
             <Card.Content style={styles.cardContent}>
                 <View style={styles.iconContainer}>
@@ -139,16 +144,28 @@ export default function NotificationsScreen({ navigation }: Props) {
                 <View style={styles.textContainer}>
                     <View style={styles.titleRow}>
                         <Text style={styles.title}>{item.title}</Text>
-                        {!item.isRead && (
+                        {!item.read && (
                             <View style={styles.unreadDot} />
                         )}
                     </View>
                     <Text style={styles.message}>{item.message}</Text>
-                    <Text style={styles.date}>{formatDate(item.date)}</Text>
+                    <View style={styles.footer}>
+                        <Text style={styles.date}>{formatDate(item.created_at)}</Text>
+                        <IconButton
+                            icon="delete"
+                            size={16}
+                            iconColor={colors.error.main}
+                            onPress={() => handleDelete(item.id)}
+                        />
+                    </View>
                 </View>
             </Card.Content>
         </Card>
     );
+
+    if (loading) {
+        return <LoadingSpinner text="Loading notifications..." />;
+    }
 
     if (notifications.length === 0) {
         return (
@@ -172,10 +189,10 @@ export default function NotificationsScreen({ navigation }: Props) {
                 {notifications.length > 0 && (
                     <Button
                         mode="text"
-                        onPress={clearAll}
+                        onPress={handleMarkAllAsRead}
                         compact
                     >
-                        Clear All
+                        Mark All Read
                     </Button>
                 )}
             </View>
@@ -256,5 +273,10 @@ const styles = StyleSheet.create({
     date: {
         fontSize: typography.fontSize.xs,
         color: colors.text.disabled,
+    },
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
 });

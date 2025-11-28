@@ -4,8 +4,10 @@ import { TextInput, Button, Text, Title, HelperText, Checkbox } from 'react-nati
 import { useAuth } from '../context/AuthContext';
 import * as SecureStore from 'expo-secure-store';
 import type { StackScreenProps } from '@react-navigation/stack';
+import { isValidEmail } from '../lib/validation';
+import { RootStackParamList } from '../lib/types';
 
-type Props = StackScreenProps<any, 'SignIn'>;
+type Props = StackScreenProps<RootStackParamList, 'SignIn'>;
 
 export default function SignInScreen({ navigation }: Props) {
     const { signIn, loading } = useAuth();
@@ -36,10 +38,6 @@ export default function SignInScreen({ navigation }: Props) {
         }
     };
 
-    const isValidEmail = (email: string) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    };
-
     const handleSignIn = async () => {
         setErrorMsg('');
 
@@ -58,7 +56,14 @@ export default function SignInScreen({ navigation }: Props) {
         const { error } = await signIn(email, password);
 
         if (error) {
-            setErrorMsg(error);
+            // Check if error is related to email verification
+            if (error.toLowerCase().includes('email') && error.toLowerCase().includes('confirm')) {
+                setErrorMsg('Please verify your email before signing in. Check your inbox for the verification link.');
+            } else if (error.includes('Invalid login credentials')) {
+                setErrorMsg('Invalid email or password. Please try again.');
+            } else {
+                setErrorMsg(error);
+            }
         } else {
             if (rememberMe) {
                 try {
@@ -145,14 +150,7 @@ export default function SignInScreen({ navigation }: Props) {
                             <Text style={styles.rememberMeText}>Remember Me</Text>
                         </View>
 
-                        <Button
-                            mode="text"
-                            onPress={() => navigation.navigate('ForgotPassword')}
-                            style={styles.forgotPassword}
-                            disabled={isSubmitting || loading}
-                        >
-                            Forgot password?
-                        </Button>
+                        {/* Forgot Password removed - no SMTP configured */}
 
                         <Button
                             mode="contained"

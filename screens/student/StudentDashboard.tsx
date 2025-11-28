@@ -5,9 +5,39 @@ import { useNavigation } from '@react-navigation/native';
 import AnimatedCard from '../../components/AnimatedCard';
 import GradientBackground from '../../components/GradientBackground';
 import { colors, spacing, typography } from '../../lib/theme';
+import { useAuth } from '../../context/AuthContext';
+import { fetchStudentAttendanceStats, fetchStudentPendingAssignments } from '../../lib/database';
+import { useState, useEffect } from 'react';
 
 export default function StudentDashboard() {
     const navigation = useNavigation();
+    const { session } = useAuth();
+    const [stats, setStats] = useState({ attendanceRate: 0, pendingAssignments: 0 });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadStats();
+    }, []);
+
+    const loadStats = async () => {
+        if (!session?.user?.id) return;
+
+        try {
+            const [attendanceRes, assignmentsRes] = await Promise.all([
+                fetchStudentAttendanceStats(session.user.id),
+                fetchStudentPendingAssignments(session.user.id)
+            ]);
+
+            setStats({
+                attendanceRate: attendanceRes.data?.rate || 0,
+                pendingAssignments: assignmentsRes.data || 0
+            });
+        } catch (error) {
+            console.error('Error loading stats:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const features = [
         {
@@ -72,7 +102,9 @@ export default function StudentDashboard() {
                         <Card.Content style={styles.statContent}>
                             <IconButton icon="calendar-check" size={28} iconColor={colors.success.main} />
                             <View>
-                                <Title style={styles.statValue}>--</Title>
+                                <Title style={styles.statValue}>
+                                    {loading ? '...' : `${stats.attendanceRate}%`}
+                                </Title>
                                 <Paragraph style={styles.statLabel}>Attendance Rate</Paragraph>
                             </View>
                         </Card.Content>
@@ -82,7 +114,9 @@ export default function StudentDashboard() {
                         <Card.Content style={styles.statContent}>
                             <IconButton icon="file-document-outline" size={28} iconColor={colors.info.main} />
                             <View>
-                                <Title style={styles.statValue}>--</Title>
+                                <Title style={styles.statValue}>
+                                    {loading ? '...' : stats.pendingAssignments}
+                                </Title>
                                 <Paragraph style={styles.statLabel}>Pending Tasks</Paragraph>
                             </View>
                         </Card.Content>

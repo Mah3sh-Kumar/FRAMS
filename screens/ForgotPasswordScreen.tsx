@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 're
 import { TextInput, Button, Text, Title, HelperText, Card } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { colors, spacing, typography } from '../lib/theme';
+import { isValidEmail } from '../lib/validation';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'ForgotPassword'>;
@@ -12,10 +13,6 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const isValidEmail = (email: string) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    };
 
     const handleResetPassword = async () => {
         setErrorMsg('');
@@ -34,22 +31,69 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         setIsSubmitting(true);
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: 'your-app://reset-password',
+            console.log('=== PASSWORD RESET DEBUG ===');
+            console.log('Email:', email);
+            console.log('Redirect URL:', 'myapp://reset-password');
+            console.log('Timestamp:', new Date().toISOString());
+
+            const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: 'myapp://reset-password',
             });
 
+            console.log('=== SUPABASE RESPONSE ===');
+            console.log('Full Response:', JSON.stringify({ data, error }, null, 2));
+            console.log('Error Details:', error ? {
+                message: error.message,
+                status: error.status,
+                name: error.name,
+            } : 'No error');
+
             if (error) {
-                setErrorMsg(error.message);
+                console.error('❌ Password reset error:', error);
+
+                // Provide more helpful error messages
+                let userMessage = error.message;
+
+                if (error.message.includes('rate limit')) {
+                    userMessage = 'Too many reset attempts. Please wait and try again. (Rate limit: 30 emails/hour)';
+                } else if (error.message.includes('Invalid')) {
+                    userMessage = 'Invalid email address or user not found. Please check your email and try again.';
+                } else if (error.message.includes('redirect')) {
+                    userMessage = 'Configuration error. Please contact support. (Redirect URL not whitelisted)';
+                }
+
+                setErrorMsg(userMessage);
             } else {
-                setSuccessMsg('Password reset instructions have been sent to your email.');
+                console.log('✅ Password reset email request sent successfully');
+                console.log('⚠️  IMPORTANT CHECKS:');
+                console.log('1. Check your email inbox AND spam/junk folder');
+                console.log('2. Email may take 5-10 minutes to arrive');
+                console.log('3. Verify redirect URL is whitelisted in Supabase dashboard');
+                console.log('4. Check Supabase SMTP configuration');
+                console.log('5. Verify email template is enabled');
+                console.log('6. Rate limit: 30 emails per hour');
+
+                setSuccessMsg(
+                    'Password reset instructions have been sent to your email. ' +
+                    'Please check your inbox AND spam folder. ' +
+                    'Email may take 5-10 minutes to arrive. ' +
+                    'If you don\'t receive it, check Supabase configuration.'
+                );
                 setTimeout(() => {
                     navigation.goBack();
-                }, 3000);
+                }, 5000);
             }
         } catch (error: any) {
-            setErrorMsg(error.message || 'An error occurred');
+            console.error('❌ Password reset exception:', error);
+            console.error('Exception details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+            });
+            setErrorMsg(error.message || 'An error occurred. Please try again.');
         } finally {
             setIsSubmitting(false);
+            console.log('=== END PASSWORD RESET DEBUG ===');
         }
     };
 

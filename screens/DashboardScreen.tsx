@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Text, Button, IconButton } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import StudentDashboard from './student/StudentDashboard';
 import TeacherDashboard from './teacher/TeacherDashboard';
 import AdminDashboard from './admin/AdminDashboard';
+import type { StackScreenProps } from '@react-navigation/stack';
 
-export default function DashboardScreen() {
+type Props = StackScreenProps<any, 'Dashboard'>;
+
+export default function DashboardScreen({ navigation }: Props) {
     const { session, role, signOut } = useAuth();
 
     const getRoleColor = () => {
@@ -27,15 +30,26 @@ export default function DashboardScreen() {
                         <Text style={styles.roleText}>{role || 'No Role'}</Text>
                     </View>
                 </View>
-                <Button
-                    onPress={signOut}
-                    mode="contained"
-                    buttonColor="rgba(255, 255, 255, 0.2)"
-                    textColor="#ffffff"
-                    compact
-                >
-                    Sign Out
-                </Button>
+                <View style={styles.headerActions}>
+                    <IconButton
+                        icon="bell"
+                        iconColor="#ffffff"
+                        size={22}
+                        onPress={() => navigation.navigate('Notifications')}
+                    />
+                    <IconButton
+                        icon="account-circle"
+                        iconColor="#ffffff"
+                        size={22}
+                        onPress={() => navigation.navigate('Profile')}
+                    />
+                    <IconButton
+                        icon="cog"
+                        iconColor="#ffffff"
+                        size={22}
+                        onPress={() => navigation.navigate('Settings')}
+                    />
+                </View>
             </View>
 
             <View style={styles.content}>
@@ -49,11 +63,6 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -68,6 +77,10 @@ const styles = StyleSheet.create({
     },
     headerInfo: {
         flex: 1,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     email: {
         color: '#ffffff',
@@ -97,5 +110,3 @@ const styles = StyleSheet.create({
         fontSize: 16,
     }
 });
-
-

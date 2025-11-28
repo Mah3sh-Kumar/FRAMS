@@ -26,6 +26,7 @@ interface AuthContextType {
     session: Session | null;
     user: User | null;
     role: UserRole;
+    isVerified: boolean;
     loading: boolean;
     error: string | null;
     signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -37,6 +38,7 @@ const AuthContext = createContext<AuthContextType>({
     session: null,
     user: null,
     role: null,
+    isVerified: false,
     loading: true,
     error: null,
     signIn: async () => ({ error: null }),
@@ -48,6 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null);
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<UserRole>(null);
+    const [isVerified, setIsVerified] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -56,43 +59,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.log('🔍 fetchUserRole called for userId:', userId);
             let attempts = 0;
             const maxAttempts = 3;
-            let roleData = null;
+            let userData = null;
 
             while (attempts < maxAttempts) {
-                console.log(`🔍 Attempt ${attempts + 1}/${maxAttempts} to fetch role for user ${userId}`);
-                const { data, error } = await getUserRole(userId);
+                console.log(`🔍 Attempt ${attempts + 1}/${maxAttempts} to fetch user data for ${userId}`);
+                
+                // Fetch both role and verification status
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('role, is_verified')
+                    .eq('id', userId)
+                    .single();
 
                 if (error) {
-                    console.error(`❌ Error fetching user role (Attempt ${attempts + 1}):`, error);
+                    console.error(`❌ Error fetching user data (Attempt ${attempts + 1}):`, error);
                     // PGRST116 means "No rows found" - profile might not be created yet by trigger
-                    if (error.code === 'PGRST116' || error.message?.includes('User profile not found')) {
+                    if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
                         console.log(`🟡 User profile not found (Attempt ${attempts + 1}/${maxAttempts}). Retrying in 1s...`);
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         attempts++;
                         continue;
                     }
 
-                    console.error('❌ Fatal error fetching user role:', error);
+                    console.error('❌ Fatal error fetching user data:', error);
                     setRole(null);
+                    setIsVerified(false);
                     return;
                 }
 
-                console.log('✅ Role data received:', data);
-                roleData = data;
+                console.log('✅ User data received:', data);
+                userData = data;
                 break;
             }
 
-            if (roleData) {
-                console.log(`✅ Setting role to: "${roleData}" for user ${userId}`);
-                setRole(roleData as UserRole);
+            if (userData) {
+                console.log(`✅ Setting role to: "${userData.role}" and verified: ${userData.is_verified} for user ${userId}`);
+                setRole(userData.role as UserRole);
+                setIsVerified(userData.is_verified || false);
             } else {
-                console.error('❌ Failed to fetch user role after multiple attempts.');
-                console.error('❌ User will have role = null');
+                console.error('❌ Failed to fetch user data after multiple attempts.');
+                console.error('❌ User will have role = null and verified = false');
                 setRole(null);
+                setIsVerified(false);
             }
         } catch (error) {
             console.error('❌ CRASH in fetchUserRole:', error);
             setRole(null);
+            setIsVerified(false);
         } finally {
             setLoading(false);
         }
@@ -294,13 +307,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const signOut = async () => {
         await supabase.auth.signOut();
         setRole(null);
+        setIsVerified(false);
         setSession(null);
         setUser(null);
         setError(null);
     };
 
     return (
-        <AuthContext.Provider value={{ session, user, role, loading, error, signIn, signUp, signOut }}>
+        <AuthContext.Provider value={{ session, user, role, isVerified, loading, error, signIn, signUp, signOut }}>
             {children}
         </AuthContext.Provider>
     );

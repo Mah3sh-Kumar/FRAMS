@@ -359,19 +359,17 @@ export async function bulkMarkAttendance(
             student_id: studentId,
             subject_id: subjectId,
             date,
-            status
+            status,
+            timestamp: new Date().toISOString()
         }));
 
-        await supabase
-            .from('attendance')
-            .delete()
-            .eq('subject_id', subjectId)
-            .eq('date', date)
-            .in('student_id', studentIds);
-
+        // Use upsert instead of delete-then-insert to prevent data loss
         const { data, error } = await supabase
             .from('attendance')
-            .insert(records)
+            .upsert(records, { 
+                onConflict: 'student_id,subject_id,date',
+                ignoreDuplicates: false 
+            })
             .select();
 
         if (error) throw error;
@@ -567,5 +565,43 @@ export async function submitAssignment(
     } catch (error: any) {
         console.error('Error submitting assignment:', error);
         return { data: null, error: getErrorMessage(error) };
+    }
+}
+
+// Get student attendance statistics
+export async function fetchStudentAttendanceStats(studentId: string) {
+    try {
+        const { data, error } = await supabase
+            .from('attendance')
+            .select('status')
+            .eq('student_id', studentId);
+
+        if (error) throw error;
+
+        const total = data?.length || 0;
+        const present = data?.filter(a => a.status === 'present').length || 0;
+        const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+        return { data: { total, present, rate }, error: null };
+    } catch (error: any) {
+        console.error('Error fetching student attendance stats:', error);
+        return { data: null, error: getErrorMessage(error) };
+    }
+}
+
+// Get student pending assignments count
+export async function fetchStudentPendingAssignments(studentId: string) {
+    try {
+        const { count, error } = await supabase
+            .from('student_assignments')
+            .select('*', { count: 'exact', head: true })
+            .eq('student_id', studentId)
+            .eq('status', 'pending');
+
+        if (error) throw error;
+        return { data: count || 0, error: null };
+    } catch (error: any) {
+        console.error('Error fetching pending assignments:', error);
+        return { data: 0, error: getErrorMessage(error) };
     }
 }

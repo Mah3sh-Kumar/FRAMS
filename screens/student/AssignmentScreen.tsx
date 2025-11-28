@@ -4,6 +4,8 @@ import { Title, Card, Text, Chip, IconButton, SegmentedButtons, Button, Surface,
 import { supabase } from '../../lib/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import AnimatedCard from '../../components/AnimatedCard';
+import EmptyState from '../../components/EmptyState';
+import CountdownTimer from '../../components/CountdownTimer';
 import { colors, spacing, typography } from '../../lib/theme';
 
 type Assignment = {
@@ -88,16 +90,8 @@ export default function AssignmentScreen() {
         }
     }
 
-    function isOverdue(dueDate: string) {
-        return new Date(dueDate) < new Date();
-    }
-
-    function getDaysUntilDue(dueDate: string) {
-        const due = new Date(dueDate);
-        const now = new Date();
-        const diffTime = due.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
+    function isOverdue(dueDate: string, status: string) {
+        return status === 'pending' && new Date(dueDate) < new Date();
     }
 
     const stats = {
@@ -188,21 +182,18 @@ export default function AssignmentScreen() {
                 {/* Assignments List */}
                 <View style={styles.listContainer}>
                     {filteredAssignments.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <IconButton icon="book-open-variant" size={64} iconColor={colors.text.secondary} />
-                            <Text style={styles.emptyText}>
-                                {searchQuery ? 'No assignments found' :
-                                    filterStatus === 'all' ? 'No assignments yet' :
-                                        `No ${filterStatus} assignments`}
-                            </Text>
-                        </View>
+                        <EmptyState
+                            icon="book-open-variant"
+                            message={searchQuery ? 'No assignments found' :
+                                filterStatus === 'all' ? 'No assignments yet' :
+                                    `No ${filterStatus} assignments`}
+                        />
                     ) : (
                         filteredAssignments.map((item) => {
                             const assignment = item.assignments;
                             if (!assignment) return null;
 
-                            const daysUntilDue = getDaysUntilDue(assignment.due_date);
-                            const overdue = isOverdue(assignment.due_date) && item.status === 'pending';
+                            const overdue = isOverdue(assignment.due_date, item.status);
 
                             return (
                                 <AnimatedCard key={item.id} style={styles.card}>
@@ -232,21 +223,24 @@ export default function AssignmentScreen() {
 
                                         <View style={styles.cardFooter}>
                                             <View style={styles.dueDateContainer}>
-                                                <IconButton
-                                                    icon={overdue ? "alert-circle" : "calendar"}
-                                                    size={16}
-                                                    iconColor={overdue ? colors.error.main : colors.text.secondary}
-                                                    style={styles.iconButton}
-                                                />
-                                                <Text style={[
-                                                    styles.dueDate,
-                                                    overdue && styles.overdueText
-                                                ]}>
-                                                    {overdue ? 'Overdue' :
-                                                        daysUntilDue === 0 ? 'Due today' :
-                                                            daysUntilDue === 1 ? 'Due tomorrow' :
-                                                                `Due in ${daysUntilDue} days`}
-                                                </Text>
+                                                {item.status === 'pending' && !overdue ? (
+                                                    <CountdownTimer dueDate={assignment.due_date} />
+                                                ) : (
+                                                    <>
+                                                        <IconButton
+                                                            icon={overdue ? "alert-circle" : "calendar"}
+                                                            size={16}
+                                                            iconColor={overdue ? colors.error.main : colors.text.secondary}
+                                                            style={styles.iconButton}
+                                                        />
+                                                        <Text style={[
+                                                            styles.dueDate,
+                                                            overdue && styles.overdueText
+                                                        ]}>
+                                                            {overdue ? 'Overdue' : 'Completed'}
+                                                        </Text>
+                                                    </>
+                                                )}
                                             </View>
 
                                             {item.status === 'graded' && item.score !== null && (
@@ -403,15 +397,5 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         borderRadius: 8,
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: spacing.xxl,
-    },
-    emptyText: {
-        fontSize: typography.fontSize.md,
-        color: colors.text.secondary,
-        marginTop: spacing.md,
     },
 });
