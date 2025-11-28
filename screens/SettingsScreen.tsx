@@ -81,6 +81,21 @@ export default function SettingsScreen({ navigation }: Props) {
 
             <Card style={styles.card}>
                 <Card.Content>
+                    <Title>Security</Title>
+                    <List.Item
+                        title="Change Password"
+                        description="Update your password"
+                        left={props => <List.Icon {...props} icon="lock-reset" />}
+                        right={props => <List.Icon {...props} icon="chevron-right" />}
+                        onPress={() => {
+                            navigation.navigate('ChangePassword');
+                        }}
+                    />
+                </Card.Content>
+            </Card>
+
+            <Card style={styles.card}>
+                <Card.Content>
                     <Title>About</Title>
                     <List.Item
                         title="App Version"
@@ -94,8 +109,7 @@ export default function SettingsScreen({ navigation }: Props) {
                         left={props => <List.Icon {...props} icon="shield-check" />}
                         right={props => <List.Icon {...props} icon="chevron-right" />}
                         onPress={() => {
-                            // TODO: Navigate to privacy policy
-                            alert('Privacy policy coming soon');
+                            navigation.navigate('PrivacyPolicy');
                         }}
                     />
                     <Divider />
@@ -105,8 +119,7 @@ export default function SettingsScreen({ navigation }: Props) {
                         left={props => <List.Icon {...props} icon="file-document" />}
                         right={props => <List.Icon {...props} icon="chevron-right" />}
                         onPress={() => {
-                            // TODO: Navigate to terms of service
-                            alert('Terms of service coming soon');
+                            navigation.navigate('Terms');
                         }}
                     />
                 </Card.Content>

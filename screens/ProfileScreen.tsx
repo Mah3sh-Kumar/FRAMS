@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { TextInput, Button, Title, Card, Avatar, Switch, Text } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { TextInput, Button, Title, Card, Avatar, Switch, Text, Paragraph } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { updateUserProfile } from '../lib/database';
+import { uploadProfilePicture, uploadFaceRegistrationImage } from '../lib/storage';
 import { colors, spacing, typography, shadows } from '../lib/theme';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ImagePickerComponent from '../components/ImagePickerComponent';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'Profile'>;
@@ -18,6 +20,8 @@ export default function ProfileScreen({ navigation }: Props) {
 
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState('');
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [department, setDepartment] = useState('');
     const [enrollmentNumber, setEnrollmentNumber] = useState('');
     const [branch, setBranch] = useState('');
@@ -46,6 +50,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
             setFullName(data.full_name || '');
             setEmail(data.email || '');
+            setAvatarUrl(data.avatar_url || '');
 
             if (role === 'student' && data.students) {
                 setEnrollmentNumber(data.students.enrollment_number || '');
@@ -90,113 +95,168 @@ export default function ProfileScreen({ navigation }: Props) {
         }
     };
 
-    if (loading) {
-        return <LoadingSpinner />;
+    const handleImageSelected = async (uri: string) => {
+        try {
+            setUploadingImage(true);
+            const userId = session?.user?.id;
+            if (!userId) return;
+
+            const url = await uploadProfilePicture(userId, uri);
+            if (url) {
+                setAvatarUrl(url);
+                Alert.alert('Success', 'Profile picture updated successfully!');
+            } else {
+                Alert.alert('Error', 'Failed to upload profile picture');
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            Alert.alert('Error', 'An error occurred while uploading');
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
+const handleFaceRegistration = async (uri: string) => {
+    try {
+        setUploadingImage(true);
+        const userId = session?.user?.id;
+        if (!userId) return;
+
+        const url = await uploadFaceRegistrationImage(userId, uri);
+        if (url) {
+            Alert.alert(
+                'Success',
+                'Face registration image uploaded. Please ask the admin to run the registration script.'
+            );
+        } else {
+            Alert.alert('Error', 'Failed to upload face registration image');
+        }
+    } catch (error) {
+        console.error('Error uploading face image:', error);
+        Alert.alert('Error', 'An error occurred while uploading');
+    } finally {
+        setUploadingImage(false);
     }
+};
 
-    return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <Avatar.Text
-                    size={80}
-                    label={fullName.substring(0, 2).toUpperCase()}
-                    style={styles.avatar}
+if (loading) {
+    return <LoadingSpinner />;
+}
+
+return (
+    <ScrollView style={styles.container}>
+        <View style={styles.header}>
+            <ImagePickerComponent
+                currentImageUrl={avatarUrl}
+                onImageSelected={handleImageSelected}
+                size={100}
+            />
+            <Title style={styles.name}>{fullName}</Title>
+            <Text style={styles.role}>{role?.toUpperCase()}</Text>
+        </View>
+
+        <Card style={styles.card}>
+            <Card.Content>
+                <Title>Personal Information</Title>
+
+                <TextInput
+                    label="Full Name"
+                    value={fullName}
+                    onChangeText={setFullName}
+                    disabled={!editing}
+                    mode="outlined"
+                    style={styles.input}
                 />
-                <Title style={styles.name}>{fullName}</Title>
-                <Text style={styles.role}>{role?.toUpperCase()}</Text>
-            </View>
 
-            <Card style={styles.card}>
-                <Card.Content>
-                    <Title>Personal Information</Title>
+                <TextInput
+                    label="Email"
+                    value={email}
+                    disabled={true}
+                    mode="outlined"
+                    style={styles.input}
+                />
 
-                    <TextInput
-                        label="Full Name"
-                        value={fullName}
-                        onChangeText={setFullName}
-                        disabled={!editing}
-                        mode="outlined"
-                        style={styles.input}
-                    />
-
-                    <TextInput
-                        label="Email"
-                        value={email}
-                        disabled={true}
-                        mode="outlined"
-                        style={styles.input}
-                    />
-
-                    {role === 'student' && (
-                        <>
+                {role === 'student' && (
+                    <>
+                        <TextInput
+                            label="Enrollment Number"
+                            value={enrollmentNumber}
+                            disabled={true}
+                            mode="outlined"
+                            style={styles.input}
+                        />
+                        {branch && (
                             <TextInput
-                                label="Enrollment Number"
-                                value={enrollmentNumber}
+                                label="Branch"
+                                value={branch}
                                 disabled={true}
                                 mode="outlined"
                                 style={styles.input}
                             />
-                            {branch && (
-                                <TextInput
-                                    label="Branch"
-                                    value={branch}
-                                    disabled={true}
-                                    mode="outlined"
-                                    style={styles.input}
-                                />
-                            )}
-                        </>
-                    )}
+                        )}
+                        <View style={styles.section}>
+                            <Title style={styles.sectionTitle}>Face Recognition</Title>
+                            <Paragraph style={styles.sectionDescription}>
+                                Upload a clear photo of your face to enable automated attendance.
+                            </Paragraph>
+                            <ImagePickerComponent
+                                currentImageUrl={undefined} // Don't show preview of face reg image here
+                                onImageSelected={handleFaceRegistration}
+                                size={60}
+                            />
+                        </View>
+                    </>
+                )}
 
-                    {role === 'teacher' && (
-                        <TextInput
-                            label="Department"
-                            value={department}
-                            onChangeText={setDepartment}
-                            disabled={!editing}
-                            mode="outlined"
-                            style={styles.input}
-                        />
-                    )}
+                {role === 'teacher' && (
+                    <TextInput
+                        label="Department"
+                        value={department}
+                        onChangeText={setDepartment}
+                        disabled={!editing}
+                        mode="outlined"
+                        style={styles.input}
+                    />
+                )}
 
-                    <View style={styles.buttonContainer}>
-                        {!editing ? (
+                <View style={styles.buttonContainer}>
+                    {!editing ? (
+                        <Button
+                            mode="contained"
+                            onPress={() => setEditing(true)}
+                            style={styles.button}
+                        >
+                            Edit Profile
+                        </Button>
+                    ) : (
+                        <>
                             <Button
                                 mode="contained"
-                                onPress={() => setEditing(true)}
+                                onPress={handleSave}
+                                loading={saving}
+                                disabled={saving}
+                                style={[styles.button, styles.buttonSpaced]}
+                            >
+                                Save Changes
+                            </Button>
+                            <Button
+                                mode="outlined"
+                                onPress={() => {
+                                    setEditing(false);
+                                    fetchProfile();
+                                }}
+                                disabled={saving}
                                 style={styles.button}
                             >
-                                Edit Profile
+                                Cancel
                             </Button>
-                        ) : (
-                            <>
-                                <Button
-                                    mode="contained"
-                                    onPress={handleSave}
-                                    loading={saving}
-                                    disabled={saving}
-                                    style={[styles.button, styles.buttonSpaced]}
-                                >
-                                    Save Changes
-                                </Button>
-                                <Button
-                                    mode="outlined"
-                                    onPress={() => {
-                                        setEditing(false);
-                                        fetchProfile();
-                                    }}
-                                    disabled={saving}
-                                    style={styles.button}
-                                >
-                                    Cancel
-                                </Button>
-                            </>
-                        )}
-                    </View>
-                </Card.Content>
-            </Card>
-        </ScrollView>
-    );
+                        </>
+                    )}
+                </View>
+            </Card.Content>
+        </Card>
+    </ScrollView>
+);
 }
 
 const styles = StyleSheet.create({
@@ -240,5 +300,20 @@ const styles = StyleSheet.create({
     },
     buttonSpaced: {
         marginBottom: spacing.sm,
+    },
+    section: {
+        marginTop: spacing.lg,
+        paddingTop: spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: colors.divider,
+    },
+    sectionTitle: {
+        fontSize: typography.fontSize.md,
+        marginBottom: spacing.xs,
+    },
+    sectionDescription: {
+        fontSize: typography.fontSize.sm,
+        color: colors.text.secondary,
+        marginBottom: spacing.md,
     },
 });

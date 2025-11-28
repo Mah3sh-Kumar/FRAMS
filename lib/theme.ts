@@ -1,4 +1,5 @@
-import { MD3LightTheme as DefaultTheme } from 'react-native-paper';
+import { MD3LightTheme, configureFonts } from 'react-native-paper';
+import type { MD3Theme } from 'react-native-paper';
 
 // Modern color palette
 export const colors = {
@@ -60,12 +61,14 @@ export const colors = {
         gradient: ['#8b5cf6', '#6d28d9'], // Purple gradient
         accent: '#8b5cf6',
     },
+    // UI elements
+    divider: '#e2e8f0',
 };
 
 // Typography
 export const typography = {
     fontFamily: {
-        regular: 'System', // Will use system font, can be replaced with custom fonts
+        regular: 'System',
         medium: 'System',
         bold: 'System',
     },
@@ -151,19 +154,53 @@ export const animation = {
     },
 };
 
-// React Native Paper theme
-export const paperTheme = {
-    ...DefaultTheme,
-    colors: {
-        ...DefaultTheme.colors,
-        primary: colors.primary.main,
-        secondary: colors.secondary.main,
-        error: colors.error.main,
-        background: colors.background.default,
-        surface: colors.background.paper,
-        text: colors.text.primary,
-    },
+// React Native Paper theme - Create a proper MD3 theme
+export const paperTheme: MD3Theme = {
+    ...MD3LightTheme,
     roundness: borderRadius.md,
+    colors: {
+        ...MD3LightTheme.colors,
+        primary: colors.primary.main,
+        onPrimary: '#ffffff',
+        primaryContainer: colors.primary.light,
+        onPrimaryContainer: colors.primary.dark,
+        secondary: colors.secondary.main,
+        onSecondary: '#ffffff',
+        secondaryContainer: colors.secondary.light,
+        onSecondaryContainer: colors.secondary.dark,
+        tertiary: colors.info.main,
+        onTertiary: '#ffffff',
+        tertiaryContainer: colors.info.light,
+        onTertiaryContainer: colors.info.dark,
+        error: colors.error.main,
+        onError: '#ffffff',
+        errorContainer: colors.error.light,
+        onErrorContainer: colors.error.dark,
+        background: colors.background.default,
+        onBackground: colors.text.primary,
+        surface: colors.background.paper,
+        onSurface: colors.text.primary,
+        surfaceVariant: '#f1f5f9',
+        onSurfaceVariant: colors.text.secondary,
+        outline: '#cbd5e1',
+        outlineVariant: '#e2e8f0',
+        shadow: '#000000',
+        scrim: '#000000',
+        inverseSurface: colors.background.dark,
+        inverseOnSurface: colors.text.inverse,
+        inversePrimary: colors.primary.light,
+        elevation: {
+            level0: 'transparent',
+            level1: '#ffffff',
+            level2: '#f8fafc',
+            level3: '#f1f5f9',
+            level4: '#e2e8f0',
+            level5: '#cbd5e1',
+        },
+        surfaceDisabled: 'rgba(30, 41, 59, 0.12)',
+        onSurfaceDisabled: 'rgba(30, 41, 59, 0.38)',
+        backdrop: 'rgba(15, 23, 42, 0.4)',
+    },
 };
 
 // Export complete theme
