@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Searchbar, Menu, Button } from 'react-native-paper';
-import { colors, spacing } from '../lib/theme';
+import { useTheme } from '../lib/design-system/ThemeContext';
 
 interface FilterBarProps {
     searchQuery: string;
@@ -20,7 +20,25 @@ export default function FilterBar({
     selectedSort,
     onSortChange,
 }: FilterBarProps) {
+    const { tokens, getSurfaceColor } = useTheme();
     const [menuVisible, setMenuVisible] = React.useState(false);
+
+    const styles = StyleSheet.create({
+        container: {
+            flexDirection: 'row',
+            gap: tokens.spacing.sm,
+            marginBottom: tokens.spacing.md,
+        },
+        searchbar: {
+            flex: 1,
+            backgroundColor: getSurfaceColor(),
+            borderRadius: tokens.borders.radius.medium,
+        },
+        sortButton: {
+            minWidth: 100,
+            borderRadius: tokens.borders.radius.medium,
+        },
+    });
 
     return (
         <View style={styles.container}>
@@ -62,18 +80,3 @@ export default function FilterBar({
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-        marginBottom: spacing.md,
-    },
-    searchbar: {
-        flex: 1,
-        backgroundColor: colors.background.paper,
-    },
-    sortButton: {
-        minWidth: 100,
-    },
-});

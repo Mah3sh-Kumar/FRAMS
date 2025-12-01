@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, Title, HelperText, Checkbox } from 'react-native-paper';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import * as SecureStore from 'expo-secure-store';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { isValidEmail } from '../lib/validation';
 import { RootStackParamList } from '../lib/types';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import Button from '../components/design-system/primitives/Button';
+import Input from '../components/design-system/primitives/Input';
+import { Stack } from '../components/design-system/layout';
+import GradientBackground from '../components/GradientBackground';
 
 type Props = StackScreenProps<RootStackParamList, 'SignIn'>;
 
 export default function SignInScreen({ navigation }: Props) {
     const { signIn, loading } = useAuth();
+    const { tokens, getSurfaceColor, getTextColor } = useTheme();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -19,26 +24,37 @@ export default function SignInScreen({ navigation }: Props) {
     const [rememberMe, setRememberMe] = useState(false);
 
     useEffect(() => {
+        // Load credentials asynchronously without blocking render
         loadSavedCredentials();
     }, []);
 
-    const loadSavedCredentials = async () => {
+    const loadSavedCredentials = useCallback(async () => {
         try {
             const savedEmail = await SecureStore.getItemAsync('saved_email');
-            const savedPassword = await SecureStore.getItemAsync('saved_password');
             if (savedEmail) {
                 setEmail(savedEmail);
                 setRememberMe(true);
-                if (savedPassword) {
-                    setPassword(savedPassword);
-                }
+                // Load password separately to avoid blocking
+                SecureStore.getItemAsync('saved_password').then(savedPassword => {
+                    if (savedPassword) setPassword(savedPassword);
+                });
             }
         } catch (error) {
             console.log('Error loading saved credentials:', error);
         }
-    };
+    }, []);
 
-    const handleSignIn = async () => {
+    const handleEmailChange = useCallback((text: string) => {
+        setEmail(text);
+        if (errorMsg) setErrorMsg('');
+    }, [errorMsg]);
+
+    const handlePasswordChange = useCallback((text: string) => {
+        setPassword(text);
+        if (errorMsg) setErrorMsg('');
+    }, [errorMsg]);
+
+    const handleSignIn = useCallback(async () => {
         setErrorMsg('');
 
         if (!email || !password) {
@@ -64,116 +80,103 @@ export default function SignInScreen({ navigation }: Props) {
             } else {
                 setErrorMsg(error);
             }
+            setIsSubmitting(false);
         } else {
+            // Save credentials asynchronously without blocking navigation
             if (rememberMe) {
-                try {
-                    await SecureStore.setItemAsync('saved_email', email);
-                    await SecureStore.setItemAsync('saved_password', password);
-                } catch (err) {
-                    console.log('Error saving credentials:', err);
-                }
+                SecureStore.setItemAsync('saved_email', email).catch(err => 
+                    console.log('Error saving email:', err)
+                );
+                SecureStore.setItemAsync('saved_password', password).catch(err => 
+                    console.log('Error saving password:', err)
+                );
             } else {
-                try {
-                    await SecureStore.deleteItemAsync('saved_email');
-                    await SecureStore.deleteItemAsync('saved_password');
-                } catch (err) {
-                    console.log('Error clearing credentials:', err);
-                }
+                SecureStore.deleteItemAsync('saved_email').catch(err => 
+                    console.log('Error clearing email:', err)
+                );
+                SecureStore.deleteItemAsync('saved_password').catch(err => 
+                    console.log('Error clearing password:', err)
+                );
             }
+            setIsSubmitting(false);
         }
-
-        setIsSubmitting(false);
-    };
+    }, [email, password, rememberMe, signIn]);
 
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
+                showsVerticalScrollIndicator={false}
             >
                 <View style={styles.content}>
-                    <Title style={styles.title}>Welcome Back</Title>
+                    <Text style={[styles.title, { color: getTextColor() }]}>Welcome Back</Text>
                     <Text style={styles.subtitle}>Sign in to continue</Text>
 
-                    <View style={styles.form}>
-                        <TextInput
+                    <Stack spacing="md">
+                        <Input
                             label="Email"
                             value={email}
-                            onChangeText={(text) => {
-                                setEmail(text);
-                                setErrorMsg('');
-                            }}
+                            onChangeText={handleEmailChange}
                             autoCapitalize="none"
                             keyboardType="email-address"
-                            style={styles.input}
                             disabled={isSubmitting || loading}
-                            mode="outlined"
-                            error={!!errorMsg && !email}
+                            error={!!errorMsg && !email ? 'Email is required' : undefined}
+                            returnKeyType="next"
                         />
 
-                        <TextInput
+                        <Input
                             label="Password"
                             value={password}
-                            onChangeText={(text) => {
-                                setPassword(text);
-                                setErrorMsg('');
-                            }}
+                            onChangeText={handlePasswordChange}
                             secureTextEntry={!showPassword}
                             autoCapitalize="none"
-                            style={styles.input}
                             disabled={isSubmitting || loading}
-                            mode="outlined"
-                            error={!!errorMsg && !password}
-                            right={
-                                <TextInput.Icon
-                                    icon={showPassword ? 'eye-off' : 'eye'}
-                                    onPress={() => setShowPassword(!showPassword)}
-                                />
-                            }
+                            error={!!errorMsg && !password ? 'Password is required' : undefined}
+                            returnKeyType="done"
                         />
 
                         {errorMsg ? (
-                            <HelperText type="error" visible={!!errorMsg} style={styles.errorText}>
-                                {errorMsg}
-                            </HelperText>
+                            <Text style={styles.errorText}>{errorMsg}</Text>
                         ) : null}
 
                         <View style={styles.rememberMeContainer}>
-                            <Checkbox.Android
-                                status={rememberMe ? 'checked' : 'unchecked'}
+                            <TouchableOpacity
+                                style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
                                 onPress={() => setRememberMe(!rememberMe)}
                                 disabled={isSubmitting || loading}
-                            />
-                            <Text style={styles.rememberMeText}>Remember Me</Text>
+                                accessible
+                                accessibilityRole="checkbox"
+                                accessibilityState={{ checked: rememberMe }}
+                            >
+                                {rememberMe && <View style={styles.checkboxInner} />}
+                            </TouchableOpacity>
+                            <Text style={[styles.rememberMeText, { color: getTextColor() }]}>Remember Me</Text>
                         </View>
 
-                        {/* Forgot Password removed - no SMTP configured */}
-
                         <Button
-                            mode="contained"
+                            variant="primary"
                             onPress={handleSignIn}
                             loading={isSubmitting || loading}
                             disabled={isSubmitting || loading || !email || !password}
-                            style={styles.signInButton}
                         >
                             Sign In
                         </Button>
 
                         <View style={styles.signUpContainer}>
                             <Text style={styles.signUpText}>Don't have an account? </Text>
-                            <Button
-                                mode="text"
+                            <TouchableOpacity
                                 onPress={() => navigation.navigate('SignUp')}
                                 disabled={isSubmitting || loading}
-                                compact
                             >
-                                Sign Up
-                            </Button>
+                                <Text style={styles.signUpLink}>Sign Up</Text>
+                            </TouchableOpacity>
                         </View>
-                    </View>
+                    </Stack>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -183,63 +186,76 @@ export default function SignInScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
     },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',
+        padding: 16,
     },
     content: {
-        padding: 20,
+        maxWidth: 400,
+        width: '100%',
+        alignSelf: 'center',
     },
     title: {
+        fontSize: 32,
+        fontWeight: '700',
         textAlign: 'center',
-        marginBottom: 8,
-        fontSize: 28,
-        fontWeight: 'bold',
+        marginBottom: 4,
     },
     subtitle: {
-        textAlign: 'center',
-        marginBottom: 30,
         fontSize: 16,
-        color: '#666',
-    },
-    form: {
-        width: '100%',
-    },
-    input: {
-        marginBottom: 12,
-        backgroundColor: 'white',
+        color: '#6B7280',
+        textAlign: 'center',
+        marginBottom: 32,
     },
     errorText: {
-        marginBottom: 8,
+        fontSize: 14,
+        color: '#EF4444',
+        marginTop: 4,
     },
     rememberMeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginVertical: 16,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#6366F1',
+        marginRight: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: '#6366F1',
+    },
+    checkboxInner: {
+        width: 12,
+        height: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 2,
     },
     rememberMeText: {
-        fontSize: 14,
-        color: '#666',
-        marginLeft: 8,
-    },
-    forgotPassword: {
-        alignSelf: 'flex-end',
-        marginBottom: 16,
-    },
-    signInButton: {
-        marginTop: 8,
-        paddingVertical: 6,
+        fontSize: 16,
     },
     signUpContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 16,
+        marginTop: 24,
     },
     signUpText: {
-        fontSize: 14,
-        color: '#666',
+        fontSize: 16,
+        color: '#6B7280',
+    },
+    signUpLink: {
+        fontSize: 16,
+        color: '#6366F1',
+        fontWeight: '600',
     },
 });
+
+

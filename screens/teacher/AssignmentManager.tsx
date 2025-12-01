@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
-import { Title, TextInput, Button, SegmentedButtons, Card, Text, Menu, Portal, Modal, Divider, ActivityIndicator, Surface, IconButton, Chip } from 'react-native-paper';
+import { View, StyleSheet, FlatList, Alert, ScrollView, Text, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Menu, Portal, Modal } from 'react-native-paper';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../lib/design-system/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { fetchTeacherSubjects, fetchTeacherAssignments, fetchAssignmentSubmissions, gradeSubmission } from '../../lib/database';
-import FilterBar from '../../components/FilterBar';
+import Button from '../../components/design-system/primitives/Button';
+import Card from '../../components/design-system/primitives/Card';
+import Input from '../../components/design-system/primitives/Input';
+import { Stack } from '../../components/design-system/layout';
+import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import EmptyState from '../../components/EmptyState';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function AssignmentManager() {
     const { user } = useAuth();
+    const { tokens, getTextColor, getTextSecondaryColor, getSurfaceColor } = useTheme();
     const [tab, setTab] = useState('all');
 
     // Create Mode State
@@ -169,11 +175,9 @@ export default function AssignmentManager() {
         
         if (tab === 'all') return matchesSearch;
         if (tab === 'pending') {
-            // Assignments with pending submissions
             return matchesSearch && new Date(a.due_date) > new Date();
         }
         if (tab === 'graded') {
-            // Assignments past due date
             return matchesSearch && new Date(a.due_date) <= new Date();
         }
         return matchesSearch;
@@ -186,169 +190,329 @@ export default function AssignmentManager() {
             Math.max(submissions.filter(s => s.score !== null).length, 1)
     };
 
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: tokens.colors.background.main,
+        },
+        scrollContent: {
+            padding: tokens.spacing.md,
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.lg,
+        },
+        headerRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: tokens.spacing.md,
+        },
+        subTitle: {
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+            color: getTextColor(),
+        },
+        tabs: {
+            flexDirection: 'row',
+            gap: tokens.spacing.sm,
+            marginBottom: tokens.spacing.md,
+        },
+        tabButton: {
+            flex: 1,
+        },
+        statsContainer: {
+            flexDirection: 'row',
+            gap: tokens.spacing.sm,
+            marginVertical: tokens.spacing.md,
+        },
+        statCard: {
+            flex: 1,
+            padding: tokens.spacing.md,
+            borderRadius: tokens.borders.radius.medium,
+            alignItems: 'center',
+            ...tokens.shadows.sm,
+        },
+        statValue: {
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+            color: getTextColor(),
+        },
+        statLabel: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            marginTop: tokens.spacing.xs,
+        },
+        searchInput: {
+            backgroundColor: getSurfaceColor(),
+            borderRadius: tokens.borders.radius.medium,
+            padding: tokens.spacing.md,
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextColor(),
+            borderWidth: 1,
+            borderColor: tokens.colors.neutral.gray300,
+            marginBottom: tokens.spacing.md,
+        },
+        card: {
+            marginBottom: tokens.spacing.md,
+        },
+        assignmentHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+        },
+        assignmentTitle: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.xs,
+        },
+        assignmentSubtext: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            marginTop: tokens.spacing.xs,
+        },
+        assignmentActions: {
+            flexDirection: 'row',
+            gap: tokens.spacing.xs,
+        },
+        modal: {
+            backgroundColor: getSurfaceColor(),
+            padding: tokens.spacing.lg,
+            margin: tokens.spacing.lg,
+            borderRadius: tokens.borders.radius.medium,
+            maxHeight: '80%',
+        },
+        modalTitle: {
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.md,
+        },
+        modalActions: {
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            gap: tokens.spacing.sm,
+            marginTop: tokens.spacing.md,
+        },
+        emptyText: {
+            textAlign: 'center',
+            marginTop: tokens.spacing.xl,
+            color: getTextSecondaryColor(),
+            fontSize: tokens.typography.body.fontSize,
+            fontStyle: 'italic',
+        },
+        statusBadge: {
+            paddingHorizontal: tokens.spacing.sm,
+            paddingVertical: tokens.spacing.xs,
+            borderRadius: tokens.borders.radius.small,
+        },
+        statusText: {
+            fontSize: tokens.typography.caption.fontSize,
+            fontWeight: tokens.typography.body.fontWeight,
+        },
+    });
+
+    if (listLoading && assignments.length === 0) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <LoadingSpinner size="large" />
+                <Text style={{ marginTop: tokens.spacing.md, color: getTextColor() }}>Loading...</Text>
+            </View>
+        );
+    }
+
     const renderAssignmentList = () => {
         if (selectedAssignment) {
             return (
-                <View style={styles.tabContent}>
-                    <Button icon="arrow-left" onPress={() => setSelectedAssignment(null)} style={{ marginBottom: 10 }}>
+                <View>
+                    <Button 
+                        variant="ghost"
+                        onPress={() => setSelectedAssignment(null)} 
+                        style={{ marginBottom: tokens.spacing.md, alignSelf: 'flex-start' }}
+                        icon={<Ionicons name="arrow-back" size={20} color={tokens.colors.primary.main} />}
+                    >
                         Back to Assignments
                     </Button>
-                    <Title style={styles.subTitle}>{selectedAssignment.title} - Submissions</Title>
+                    <Text style={styles.title}>{selectedAssignment.title} - Submissions</Text>
 
                     {/* Submission Statistics */}
                     <View style={styles.statsContainer}>
-                        <Surface style={[styles.statCard, { backgroundColor: '#e3f2fd' }]}>
+                        <View style={[styles.statCard, { backgroundColor: tokens.colors.info.light }]}>
                             <Text style={styles.statValue}>{submissions.length}</Text>
                             <Text style={styles.statLabel}>Total</Text>
-                        </Surface>
-                        <Surface style={[styles.statCard, { backgroundColor: '#e8f5e9' }]}>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: tokens.colors.success.light }]}>
                             <Text style={styles.statValue}>{submissionStats.submitted}</Text>
                             <Text style={styles.statLabel}>Submitted</Text>
-                        </Surface>
-                        <Surface style={[styles.statCard, { backgroundColor: '#fff3e0' }]}>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: tokens.colors.warning.light }]}>
                             <Text style={styles.statValue}>{submissionStats.pending}</Text>
                             <Text style={styles.statLabel}>Pending</Text>
-                        </Surface>
-                        <Surface style={[styles.statCard, { backgroundColor: '#f3e5f5' }]}>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: tokens.colors.accent.light }]}>
                             <Text style={styles.statValue}>{submissionStats.avgScore.toFixed(0)}</Text>
                             <Text style={styles.statLabel}>Avg Score</Text>
-                        </Surface>
+                        </View>
                     </View>
 
-                    <FilterBar
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
+                    <RNTextInput
                         placeholder="Search students..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        style={styles.searchInput}
+                        placeholderTextColor={getTextSecondaryColor()}
                     />
 
-                    {listLoading ? <ActivityIndicator /> : (
-                        <FlatList
-                            data={submissions.filter(s => 
-                                !searchQuery || 
-                                s.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                s.enrollment_number?.toLowerCase().includes(searchQuery.toLowerCase())
-                            )}
-                            keyExtractor={item => item.id}
-                            ListEmptyComponent={
-                                <EmptyState icon="file-document-outline" message="No submissions yet" />
-                            }
-                            renderItem={({ item }) => (
-                                <Card style={styles.card} onPress={() => {
+                    <Stack spacing="md">
+                        {submissions.filter(s => 
+                            !searchQuery || 
+                            s.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            s.enrollment_number?.toLowerCase().includes(searchQuery.toLowerCase())
+                        ).map((item) => (
+                            <Card 
+                                key={item.id} 
+                                variant="elevated" 
+                                style={styles.card}
+                                onPress={() => {
                                     setGradingSubmission(item);
                                     setScore(item.score ? item.score.toString() : '');
                                     setRemarks(item.remarks || '');
-                                }}>
-                                    <Card.Content>
-                                        <View style={styles.submissionHeader}>
-                                            <View style={{ flex: 1 }}>
-                                                <Title>{item.student_name}</Title>
-                                                <Text style={{ color: '#666' }}>Enrollment: {item.enrollment_number}</Text>
-                                            </View>
-                                            <Chip 
-                                                icon={item.status === 'graded' ? 'check-circle' : 'clock-outline'}
-                                                style={{ 
-                                                    backgroundColor: item.status === 'graded' ? '#e8f5e9' : '#fff3e0' 
-                                                }}
-                                            >
-                                                {item.status.toUpperCase()}
-                                            </Chip>
-                                        </View>
-                                        {item.score !== null && (
-                                            <Text style={{ fontWeight: 'bold', color: 'green', marginTop: 8 }}>
-                                                Score: {item.score}/{selectedAssignment.max_score}
-                                            </Text>
-                                        )}
-                                    </Card.Content>
-                                </Card>
-                            )}
-                        />
-                    )}
+                                }}
+                            >
+                                <View style={styles.assignmentHeader}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.assignmentTitle}>{item.student_name}</Text>
+                                        <Text style={styles.assignmentSubtext}>Enrollment: {item.enrollment_number}</Text>
+                                    </View>
+                                    <View style={[
+                                        styles.statusBadge,
+                                        { backgroundColor: item.status === 'graded' ? tokens.colors.success.light : tokens.colors.warning.light }
+                                    ]}>
+                                        <Text style={[
+                                            styles.statusText,
+                                            { color: item.status === 'graded' ? tokens.colors.success.main : tokens.colors.warning.main }
+                                        ]}>
+                                            {item.status.toUpperCase()}
+                                        </Text>
+                                    </View>
+                                </View>
+                                {item.score !== null && (
+                                    <Text style={{ fontWeight: 'bold', color: tokens.colors.success.main, marginTop: tokens.spacing.sm }}>
+                                        Score: {item.score}/{selectedAssignment.max_score}
+                                    </Text>
+                                )}
+                            </Card>
+                        ))}
+                        {submissions.length === 0 && (
+                            <Text style={styles.emptyText}>No submissions yet</Text>
+                        )}
+                    </Stack>
                 </View>
             );
         }
 
         return (
-            <View style={styles.tabContent}>
+            <View>
                 <View style={styles.headerRow}>
-                    <Title style={styles.subTitle}>Assignments</Title>
+                    <Text style={styles.title}>Assignments</Text>
                     <Button 
-                        mode="contained" 
-                        icon="plus" 
+                        variant="primary"
                         onPress={() => setCreateModalVisible(true)}
+                        icon={<Ionicons name="add" size={20} color={tokens.colors.neutral.white} />}
                     >
                         Create
                     </Button>
                 </View>
 
-                <SegmentedButtons
-                    value={tab}
-                    onValueChange={setTab}
-                    buttons={[
-                        { value: 'all', label: 'All' },
-                        { value: 'pending', label: 'Pending Review' },
-                        { value: 'graded', label: 'Graded' },
-                    ]}
-                    style={styles.tabs}
-                />
+                <View style={styles.tabs}>
+                    <Button
+                        variant={tab === 'all' ? 'primary' : 'secondary'}
+                        size="small"
+                        onPress={() => setTab('all')}
+                        style={styles.tabButton}
+                    >
+                        All
+                    </Button>
+                    <Button
+                        variant={tab === 'pending' ? 'primary' : 'secondary'}
+                        size="small"
+                        onPress={() => setTab('pending')}
+                        style={styles.tabButton}
+                    >
+                        Pending
+                    </Button>
+                    <Button
+                        variant={tab === 'graded' ? 'primary' : 'secondary'}
+                        size="small"
+                        onPress={() => setTab('graded')}
+                        style={styles.tabButton}
+                    >
+                        Graded
+                    </Button>
+                </View>
 
-                <FilterBar
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
+                <RNTextInput
                     placeholder="Search assignments..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    style={styles.searchInput}
+                    placeholderTextColor={getTextSecondaryColor()}
                 />
 
-                {listLoading ? <ActivityIndicator /> : (
-                    <FlatList
-                        data={filteredAssignments}
-                        keyExtractor={item => item.id}
-                        ListEmptyComponent={
-                            <EmptyState icon="book-open-variant" message="No assignments found" />
-                        }
-                        renderItem={({ item }) => (
-                            <Card style={styles.card} onPress={() => setSelectedAssignment(item)}>
-                                <Card.Content>
-                                    <View style={styles.assignmentHeader}>
-                                        <View style={{ flex: 1 }}>
-                                            <Title>{item.title}</Title>
-                                            <Text style={{ color: '#666' }}>
-                                                {item.subjects?.name} ({item.subjects?.classes?.name})
-                                            </Text>
-                                            <Text style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                                                Due: {new Date(item.due_date).toLocaleDateString()}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.assignmentActions}>
-                                            <IconButton 
-                                                icon="pencil" 
-                                                size={20}
-                                                onPress={() => {
-                                                    setEditingAssignment(item);
-                                                    setEditModalVisible(true);
-                                                }}
-                                            />
-                                            <IconButton 
-                                                icon="delete" 
-                                                size={20}
-                                                iconColor="#d32f2f"
-                                                onPress={() => {
-                                                    setAssignmentToDelete(item);
-                                                    setDeleteConfirmVisible(true);
-                                                }}
-                                            />
-                                        </View>
-                                    </View>
-                                </Card.Content>
-                            </Card>
-                        )}
-                    />
-                )}
+                <Stack spacing="md">
+                    {filteredAssignments.map((item) => (
+                        <Card key={item.id} variant="elevated" style={styles.card} onPress={() => setSelectedAssignment(item)}>
+                            <View style={styles.assignmentHeader}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.assignmentTitle}>{item.title}</Text>
+                                    <Text style={styles.assignmentSubtext}>
+                                        {item.subjects?.name} ({item.subjects?.classes?.name})
+                                    </Text>
+                                    <Text style={[styles.assignmentSubtext, { marginTop: tokens.spacing.xs }]}>
+                                        Due: {new Date(item.due_date).toLocaleDateString()}
+                                    </Text>
+                                </View>
+                                <View style={styles.assignmentActions}>
+                                    <TouchableOpacity 
+                                        onPress={() => {
+                                            setEditingAssignment(item);
+                                            setEditModalVisible(true);
+                                        }}
+                                    >
+                                        <Ionicons name="pencil" size={20} color={tokens.colors.primary.main} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        onPress={() => {
+                                            setAssignmentToDelete(item);
+                                            setDeleteConfirmVisible(true);
+                                        }}
+                                    >
+                                        <Ionicons name="trash" size={20} color={tokens.colors.error.main} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </Card>
+                    ))}
+                    {filteredAssignments.length === 0 && (
+                        <Text style={styles.emptyText}>No assignments found</Text>
+                    )}
+                </Stack>
             </View>
         );
     };
 
     return (
         <View style={styles.container}>
-            {renderAssignmentList()}
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="always"
+                showsVerticalScrollIndicator={false}
+            >
+                {renderAssignmentList()}
+            </ScrollView>
 
             {/* Create Assignment Modal */}
             <Portal>
@@ -357,20 +521,21 @@ export default function AssignmentManager() {
                     onDismiss={() => setCreateModalVisible(false)} 
                     contentContainerStyle={styles.modal}
                 >
-                    <ScrollView>
-                        <Title style={{ marginBottom: 15 }}>Create New Assignment</Title>
+                    <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
+                        <Text style={styles.modalTitle}>Create New Assignment</Text>
 
                         <Menu
                             visible={menuVisible}
                             onDismiss={() => setMenuVisible(false)}
                             anchor={
-                                <Button
-                                    mode="outlined"
+                                <TouchableOpacity
+                                    style={[styles.searchInput, { marginBottom: tokens.spacing.md }]}
                                     onPress={() => setMenuVisible(true)}
-                                    style={styles.input}
                                 >
-                                    {selectedSubject ? `${selectedSubject.name} (${selectedSubject.classes?.name})` : 'Select Subject'}
-                                </Button>
+                                    <Text style={{ color: selectedSubject ? getTextColor() : getTextSecondaryColor() }}>
+                                        {selectedSubject ? `${selectedSubject.name} (${selectedSubject.classes?.name})` : 'Select Subject'}
+                                    </Text>
+                                </TouchableOpacity>
                             }
                         >
                             {subjects.map((subject) => (
@@ -385,40 +550,32 @@ export default function AssignmentManager() {
                             ))}
                         </Menu>
 
-                        <TextInput
+                        <Input
                             label="Title *"
                             value={title}
                             onChangeText={setTitle}
-                            style={styles.input}
                         />
-                        <TextInput
+                        <Input
                             label="Description"
                             value={description}
                             onChangeText={setDescription}
-                            multiline
-                            numberOfLines={4}
-                            style={styles.input}
                         />
-                        <TextInput
+                        <Input
                             label="Max Score *"
                             value={maxScore}
                             onChangeText={setMaxScore}
-                            keyboardType="numeric"
-                            style={styles.input}
                         />
-                        <TextInput
+                        <Input
                             label="Due Date (YYYY-MM-DD)"
                             value={dueDate}
                             onChangeText={setDueDate}
-                            placeholder="Leave empty for 7 days from now"
-                            style={styles.input}
                         />
 
                         <View style={styles.modalActions}>
-                            <Button onPress={() => setCreateModalVisible(false)} style={{ marginRight: 10 }}>
+                            <Button variant="ghost" onPress={() => setCreateModalVisible(false)}>
                                 Cancel
                             </Button>
-                            <Button mode="contained" onPress={handleCreateAssignment} loading={createLoading}>
+                            <Button variant="primary" onPress={handleCreateAssignment} loading={createLoading}>
                                 Create
                             </Button>
                         </View>
@@ -431,36 +588,30 @@ export default function AssignmentManager() {
                     onDismiss={() => setEditModalVisible(false)} 
                     contentContainerStyle={styles.modal}
                 >
-                    <ScrollView>
-                        <Title style={{ marginBottom: 15 }}>Edit Assignment</Title>
+                    <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
+                        <Text style={styles.modalTitle}>Edit Assignment</Text>
 
-                        <TextInput
+                        <Input
                             label="Title"
                             value={editingAssignment?.title || ''}
                             onChangeText={(text) => setEditingAssignment({ ...editingAssignment, title: text })}
-                            style={styles.input}
                         />
-                        <TextInput
+                        <Input
                             label="Description"
                             value={editingAssignment?.description || ''}
                             onChangeText={(text) => setEditingAssignment({ ...editingAssignment, description: text })}
-                            multiline
-                            numberOfLines={4}
-                            style={styles.input}
                         />
-                        <TextInput
+                        <Input
                             label="Max Score"
                             value={editingAssignment?.max_score?.toString() || ''}
                             onChangeText={(text) => setEditingAssignment({ ...editingAssignment, max_score: text })}
-                            keyboardType="numeric"
-                            style={styles.input}
                         />
 
                         <View style={styles.modalActions}>
-                            <Button onPress={() => setEditModalVisible(false)} style={{ marginRight: 10 }}>
+                            <Button variant="ghost" onPress={() => setEditModalVisible(false)}>
                                 Cancel
                             </Button>
-                            <Button mode="contained" onPress={handleUpdateAssignment} loading={createLoading}>
+                            <Button variant="primary" onPress={handleUpdateAssignment} loading={createLoading}>
                                 Update
                             </Button>
                         </View>
@@ -473,29 +624,27 @@ export default function AssignmentManager() {
                     onDismiss={() => setGradingSubmission(null)} 
                     contentContainerStyle={styles.modal}
                 >
-                    <Title>Grade Submission</Title>
-                    <Text style={{ marginBottom: 10 }}>Student: {gradingSubmission?.student_name}</Text>
+                    <Text style={styles.modalTitle}>Grade Submission</Text>
+                    <Text style={{ marginBottom: tokens.spacing.md, color: getTextColor() }}>
+                        Student: {gradingSubmission?.student_name}
+                    </Text>
 
-                    <TextInput
+                    <Input
                         label="Score"
                         value={score}
                         onChangeText={setScore}
-                        keyboardType="numeric"
-                        style={styles.input}
                     />
-                    <TextInput
+                    <Input
                         label="Remarks"
                         value={remarks}
                         onChangeText={setRemarks}
-                        multiline
-                        style={styles.input}
                     />
 
                     <View style={styles.modalActions}>
-                        <Button onPress={() => setGradingSubmission(null)} style={{ marginRight: 10 }}>
+                        <Button variant="ghost" onPress={() => setGradingSubmission(null)}>
                             Cancel
                         </Button>
-                        <Button mode="contained" onPress={handleGrade} loading={gradeLoading}>
+                        <Button variant="primary" onPress={handleGrade} loading={gradeLoading}>
                             Submit Grade
                         </Button>
                     </View>
@@ -512,80 +661,3 @@ export default function AssignmentManager() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: '#f5f5f5',
-    },
-    tabs: {
-        marginBottom: 20,
-    },
-    tabContent: {
-        flex: 1,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    subTitle: {
-        fontSize: 20,
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        gap: 10,
-        marginVertical: 15,
-    },
-    statCard: {
-        flex: 1,
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        elevation: 2,
-    },
-    statValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
-    statLabel: {
-        fontSize: 11,
-        color: '#666',
-        marginTop: 4,
-    },
-    card: {
-        marginBottom: 10,
-        elevation: 2,
-    },
-    assignmentHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    assignmentActions: {
-        flexDirection: 'row',
-    },
-    submissionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    input: {
-        marginBottom: 15,
-        backgroundColor: 'white',
-    },
-    modal: {
-        backgroundColor: 'white',
-        padding: 20,
-        margin: 20,
-        borderRadius: 8,
-        maxHeight: '80%',
-    },
-    modalActions: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        marginTop: 10,
-    },
-});

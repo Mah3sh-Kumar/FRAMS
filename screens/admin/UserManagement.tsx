@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, FlatList, ScrollView } from 'react-native';
-import { Title, TextInput, Button, SegmentedButtons, Card, Text, IconButton, Portal, Modal, ActivityIndicator, Surface, Chip, Badge } from 'react-native-paper';
+import { View, StyleSheet, Alert, FlatList, ScrollView, TouchableOpacity, Modal, Text } from 'react-native';
+import { SegmentedButtons } from 'react-native-paper';
 import { supabase } from '../../lib/supabase';
 import { verifyUser, unverifyUser, updateUserRole, deleteUser } from '../../lib/admin';
-import FilterBar from '../../components/FilterBar';
+import { useTheme } from '../../lib/design-system/ThemeContext';
+import Card from '../../components/design-system/primitives/Card';
+import Button from '../../components/design-system/primitives/Button';
+import Input from '../../components/design-system/primitives/Input';
+import GlassmorphicWidget from '../../components/design-system/analytics/GlassmorphicWidget';
+import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
+import { Stack } from '../../components/design-system/layout';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import EmptyState from '../../components/EmptyState';
+import GradientBackground from '../../components/GradientBackground';
 import { Picker } from '@react-native-picker/picker';
 import { DEPARTMENTS, CLASS_LEVELS, BRANCHES } from '../../lib/constants';
-import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
@@ -320,7 +327,7 @@ export default function UserManagement() {
                 csv += row + '\n';
             });
 
-            const fileUri = `${FileSystem.documentDirectory}users_export.csv`;
+            const fileUri = `${(FileSystem as any).documentDirectory}users_export.csv`;
             await FileSystem.writeAsStringAsync(fileUri, csv);
             await Sharing.shareAsync(fileUri);
         } catch (error) {
@@ -351,114 +358,318 @@ export default function UserManagement() {
 
     const getRoleColor = (role: string) => {
         switch (role) {
-            case 'admin': return '#6200ee';
-            case 'teacher': return '#03dac6';
-            case 'student': return '#ff0266';
-            default: return '#888';
+            case 'admin': return tokens.colors.roles.admin.main;
+            case 'teacher': return tokens.colors.roles.teacher.main;
+            case 'student': return tokens.colors.roles.student.main;
+            default: return tokens.colors.neutral.gray500;
         }
     };
 
+    const { tokens, getTextColor, getTextSecondaryColor, getSurfaceColor } = useTheme();
+
+    const styles = StyleSheet.create({
+        container: { flex: 1 },
+        header: { 
+            flexDirection: 'row', 
+            justifyContent: 'space-between', 
+            alignItems: 'flex-start', 
+            padding: tokens.spacing.lg,
+            paddingTop: tokens.spacing.xl,
+        },
+        headerTitle: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: tokens.colors.neutral.white,
+            marginBottom: tokens.spacing.xs / 2,
+        },
+        headerSubtitle: {
+            fontSize: tokens.typography.body.fontSize,
+            color: 'rgba(255, 255, 255, 0.9)',
+        },
+        headerButton: {
+            width: 48,
+            height: 48,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: tokens.borders.radius.medium,
+        },
+        createButton: {
+            width: 48,
+            height: 48,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: tokens.borders.radius.medium,
+            backgroundColor: tokens.colors.primary.main,
+        },
+        statsContainer: { 
+            flexDirection: 'row', 
+            padding: tokens.spacing.md,
+            gap: tokens.spacing.md,
+        },
+        statCard: { 
+            minWidth: 120,
+            marginRight: tokens.spacing.sm,
+        },
+        statContent: {
+            alignItems: 'center',
+            gap: tokens.spacing.sm,
+        },
+        statValue: { 
+            fontSize: tokens.typography.display.fontSize, 
+            fontWeight: tokens.typography.display.fontWeight,
+        },
+        statLabel: { 
+            fontSize: tokens.typography.caption.fontSize, 
+            marginTop: tokens.spacing.xs, 
+            textAlign: 'center',
+        },
+        searchContainer: {
+            paddingHorizontal: tokens.spacing.md,
+            marginBottom: tokens.spacing.sm,
+        },
+        filterButtons: { 
+            marginHorizontal: tokens.spacing.md, 
+            marginBottom: tokens.spacing.sm,
+        },
+        list: { 
+            padding: tokens.spacing.md,
+            paddingBottom: tokens.spacing.xl,
+        },
+        card: { marginBottom: tokens.spacing.md },
+        cardContent: { 
+            flexDirection: 'row', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            padding: tokens.spacing.md,
+        },
+        userInfo: { flex: 1 },
+        userName: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+        },
+        email: { 
+            marginBottom: tokens.spacing.sm, 
+            marginTop: tokens.spacing.xs, 
+            fontSize: tokens.typography.body.fontSize,
+        },
+        badges: { 
+            flexDirection: 'row', 
+            flexWrap: 'wrap', 
+            gap: tokens.spacing.xs, 
+            marginTop: tokens.spacing.sm,
+        },
+        badge: {
+            width: 24,
+            height: 24,
+            borderRadius: tokens.borders.radius.full,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        roleBadge: {
+            paddingHorizontal: tokens.spacing.sm,
+            paddingVertical: tokens.spacing.xs / 2,
+            borderRadius: tokens.borders.radius.full,
+        },
+        statusBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: tokens.spacing.xs / 2,
+            paddingHorizontal: tokens.spacing.sm,
+            paddingVertical: tokens.spacing.xs / 2,
+            borderRadius: tokens.borders.radius.full,
+        },
+        infoBadge: {
+            paddingHorizontal: tokens.spacing.sm,
+            paddingVertical: tokens.spacing.xs / 2,
+            borderRadius: tokens.borders.radius.full,
+        },
+        badgeText: {
+            fontSize: tokens.typography.caption.fontSize,
+            fontWeight: '600',
+            color: 'white',
+        },
+        actions: { 
+            flexDirection: 'row', 
+            gap: tokens.spacing.sm,
+        },
+        actionButton: {
+            width: 40,
+            height: 40,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        modal: { 
+            width: '90%',
+            maxHeight: '80%',
+            padding: tokens.spacing.lg,
+            borderRadius: tokens.borders.radius.large,
+        },
+        modalTitle: {
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+            marginBottom: tokens.spacing.md,
+        },
+        pickerContainer: { 
+            borderRadius: tokens.borders.radius.medium, 
+            borderWidth: 1, 
+            borderColor: tokens.colors.neutral.gray300, 
+            marginBottom: tokens.spacing.md,
+        },
+        label: { 
+            fontSize: tokens.typography.body.fontSize, 
+            fontWeight: '600', 
+            marginBottom: tokens.spacing.sm, 
+            marginTop: tokens.spacing.sm, 
+            paddingHorizontal: tokens.spacing.sm,
+            color: getTextColor(),
+        },
+        modalActions: { 
+            flexDirection: 'row', 
+            justifyContent: 'flex-end', 
+            marginTop: tokens.spacing.md, 
+            gap: tokens.spacing.sm,
+        },
+    });
+
     const renderUserItem = ({ item }: { item: UserData }) => (
-        <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
+        <Card variant="glassmorphic" style={styles.card}>
+            <View style={styles.cardContent}>
                 <View style={styles.userInfo}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text variant="titleMedium">{item.full_name || 'No Name'}</Text>
+                        <Text style={[styles.userName, { color: getTextColor() }]}>{item.full_name || 'No Name'}</Text>
                         {!item.is_verified && (
-                            <Badge size={20} style={{ backgroundColor: '#ff9800' }}>!</Badge>
+                            <View style={[styles.badge, { backgroundColor: tokens.colors.warning.main }]}>
+                                <Ionicons name="alert-circle" size={16} color="white" />
+                            </View>
                         )}
                     </View>
-                    <Text variant="bodyMedium" style={styles.email}>{item.email}</Text>
+                    <Text style={[styles.email, { color: getTextSecondaryColor() }]}>{item.email}</Text>
                     <View style={styles.badges}>
-                        <Chip style={{ backgroundColor: getRoleColor(item.role) }} textStyle={{ color: 'white', fontSize: 11 }}>
-                            {item.role.toUpperCase()}
-                        </Chip>
+                        <View style={[styles.roleBadge, { backgroundColor: getRoleColor(item.role) }]}>
+                            <Text style={styles.badgeText}>{item.role.toUpperCase()}</Text>
+                        </View>
                         {item.is_verified ? (
-                            <Chip icon="check-circle" style={{ backgroundColor: '#4caf50' }} textStyle={{ color: 'white', fontSize: 11 }}>
-                                Verified
-                            </Chip>
+                            <View style={[styles.statusBadge, { backgroundColor: tokens.colors.success.main }]}>
+                                <Ionicons name="checkmark-circle" size={12} color="white" />
+                                <Text style={styles.badgeText}>Verified</Text>
+                            </View>
                         ) : (
-                            <Chip icon="alert-circle" style={{ backgroundColor: '#ff9800' }} textStyle={{ color: 'white', fontSize: 11 }}>
-                                Pending
-                            </Chip>
+                            <View style={[styles.statusBadge, { backgroundColor: tokens.colors.warning.main }]}>
+                                <Ionicons name="alert-circle" size={12} color="white" />
+                                <Text style={styles.badgeText}>Pending</Text>
+                            </View>
                         )}
                         {item.role === 'teacher' && item.department && (
-                            <Chip style={{ backgroundColor: '#e0e0e0' }} textStyle={{ fontSize: 11 }}>
-                                {item.department}
-                            </Chip>
+                            <View style={[styles.infoBadge, { backgroundColor: tokens.colors.neutral.gray300 }]}>
+                                <Text style={[styles.badgeText, { color: tokens.colors.neutral.gray700 }]}>{item.department}</Text>
+                            </View>
                         )}
                         {item.role === 'student' && item.enrollment_number && (
-                            <Chip style={{ backgroundColor: '#e0e0e0' }} textStyle={{ fontSize: 11 }}>
-                                {item.enrollment_number}
-                            </Chip>
+                            <View style={[styles.infoBadge, { backgroundColor: tokens.colors.neutral.gray300 }]}>
+                                <Text style={[styles.badgeText, { color: tokens.colors.neutral.gray700 }]}>{item.enrollment_number}</Text>
+                            </View>
                         )}
                     </View>
                 </View>
                 <View style={styles.actions}>
                     {!item.is_verified ? (
-                        <IconButton 
-                            icon="check-circle" 
-                            size={20} 
-                            iconColor="#4caf50"
-                            onPress={() => handleVerifyUser(item.id)} 
-                        />
+                        <TouchableOpacity onPress={() => handleVerifyUser(item.id)} style={styles.actionButton}>
+                            <Ionicons name="checkmark-circle" size={24} color={tokens.colors.success.main} />
+                        </TouchableOpacity>
                     ) : item.role !== 'admin' && (
-                        <IconButton 
-                            icon="close-circle" 
-                            size={20} 
-                            iconColor="#ff9800"
-                            onPress={() => handleUnverifyUser(item.id)} 
-                        />
+                        <TouchableOpacity onPress={() => handleUnverifyUser(item.id)} style={styles.actionButton}>
+                            <Ionicons name="close-circle" size={24} color={tokens.colors.warning.main} />
+                        </TouchableOpacity>
                     )}
-                    <IconButton icon="pencil" size={20} onPress={() => openEditModal(item)} />
+                    <TouchableOpacity onPress={() => openEditModal(item)} style={styles.actionButton}>
+                        <Ionicons name="pencil" size={24} color={tokens.colors.primary.main} />
+                    </TouchableOpacity>
                     {item.role !== 'admin' && (
-                        <IconButton icon="delete" size={20} iconColor="red" onPress={() => {
+                        <TouchableOpacity onPress={() => {
                             setUserToDelete(item);
                             setDeleteConfirmVisible(true);
-                        }} />
+                        }} style={styles.actionButton}>
+                            <Ionicons name="trash" size={24} color={tokens.colors.error.main} />
+                        </TouchableOpacity>
                     )}
                 </View>
-            </Card.Content>
+            </View>
         </Card>
     );
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Title>User Management</Title>
-                <View style={{ flexDirection: 'row' }}>
-                    <IconButton icon="export" onPress={handleExportUsers} />
-                    <Button mode="contained" icon="plus" onPress={() => setCreateModalVisible(true)}>
-                        Create
-                    </Button>
+        <GradientBackground variant="admin">
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.headerTitle}>User Management</Text>
+                        <Text style={styles.headerSubtitle}>Manage users and roles</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
+                        <TouchableOpacity onPress={handleExportUsers} style={styles.headerButton}>
+                            <Ionicons name="download-outline" size={24} color={tokens.colors.neutral.white} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={styles.createButton}>
+                            <Ionicons name="add" size={20} color="white" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
 
             {/* Statistics */}
-            <View style={styles.statsContainer}>
-                <Surface style={[styles.statCard, { backgroundColor: '#e3f2fd' }]}>
-                    <Text style={styles.statValue}>{userStats.total}</Text>
-                    <Text style={styles.statLabel}>Total Users</Text>
-                </Surface>
-                <Surface style={[styles.statCard, { backgroundColor: '#f3e5f5' }]}>
-                    <Text style={styles.statValue}>{userStats.admins}</Text>
-                    <Text style={styles.statLabel}>Admins</Text>
-                </Surface>
-                <Surface style={[styles.statCard, { backgroundColor: '#e8f5e9' }]}>
-                    <Text style={styles.statValue}>{userStats.teachers}</Text>
-                    <Text style={styles.statLabel}>Teachers</Text>
-                </Surface>
-                <Surface style={[styles.statCard, { backgroundColor: '#fff3e0' }]}>
-                    <Text style={styles.statValue}>{userStats.students}</Text>
-                    <Text style={styles.statLabel}>Students</Text>
-                </Surface>
-                <Surface style={[styles.statCard, { backgroundColor: '#ffebee' }]}>
-                    <Text style={styles.statValue}>{userStats.unverified}</Text>
-                    <Text style={styles.statLabel}>Unverified</Text>
-                </Surface>
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsContainer}>
+                <GlassmorphicWidget style={styles.statCard}>
+                    <View style={styles.statContent}>
+                        <Ionicons name="people" size={24} color={tokens.colors.info.main} />
+                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.total}</Text>
+                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Total Users</Text>
+                    </View>
+                </GlassmorphicWidget>
+                <GlassmorphicWidget style={styles.statCard}>
+                    <View style={styles.statContent}>
+                        <Ionicons name="shield-checkmark" size={24} color={tokens.colors.roles.admin.main} />
+                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.admins}</Text>
+                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Admins</Text>
+                    </View>
+                </GlassmorphicWidget>
+                <GlassmorphicWidget style={styles.statCard}>
+                    <View style={styles.statContent}>
+                        <Ionicons name="briefcase" size={24} color={tokens.colors.roles.teacher.main} />
+                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.teachers}</Text>
+                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Teachers</Text>
+                    </View>
+                </GlassmorphicWidget>
+                <GlassmorphicWidget style={styles.statCard}>
+                    <View style={styles.statContent}>
+                        <Ionicons name="school" size={24} color={tokens.colors.roles.student.main} />
+                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.students}</Text>
+                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Students</Text>
+                    </View>
+                </GlassmorphicWidget>
+                <GlassmorphicWidget style={styles.statCard}>
+                    <View style={styles.statContent}>
+                        <Ionicons name="alert-circle" size={24} color={tokens.colors.warning.main} />
+                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.unverified}</Text>
+                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Unverified</Text>
+                    </View>
+                </GlassmorphicWidget>
+            </ScrollView>
 
-            <FilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} searchPlaceholder="Search users..." />
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+                <Input
+                    label="Search"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    icon={<Ionicons name="search" size={20} color={tokens.colors.neutral.gray500} />}
+                    style={{ marginBottom: 0 }}
+                />
+            </View>
 
             <SegmentedButtons
                 value={filterRole}
@@ -484,7 +695,9 @@ export default function UserManagement() {
             />
 
             {loading ? (
-                <ActivityIndicator size="large" style={{ marginTop: 20 }} />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <LoadingSpinner size="large" />
+                </View>
             ) : (
                 <FlatList
                     data={filteredUsers}
@@ -496,17 +709,17 @@ export default function UserManagement() {
             )}
 
             {/* Edit User Modal */}
-            <Portal>
-                <Modal visible={visible} onDismiss={() => setVisible(false)} contentContainerStyle={styles.modal}>
-                    <ScrollView>
-                        <Title style={{ marginBottom: 15 }}>Edit User</Title>
-                        
-                        <TextInput 
-                            label="Full Name *" 
-                            value={editName} 
-                            onChangeText={setEditName} 
-                            style={styles.input} 
-                        />
+            <Modal visible={visible} onRequestClose={() => setVisible(false)} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modal, { backgroundColor: getSurfaceColor() }]}>
+                        <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
+                            <Text style={[styles.modalTitle, { color: getTextColor() }]}>Edit User</Text>
+                            
+                            <Input 
+                                label="Full Name *" 
+                                value={editName} 
+                                onChangeText={setEditName} 
+                            />
 
                         <View style={styles.pickerContainer}>
                             <Text style={styles.label}>Role</Text>
@@ -530,11 +743,10 @@ export default function UserManagement() {
 
                         {editRole === 'student' && (
                             <>
-                                <TextInput 
+                                <Input 
                                     label="Enrollment Number *" 
                                     value={editEnrollment} 
                                     onChangeText={setEditEnrollment} 
-                                    style={styles.input} 
                                 />
                                 <View style={styles.pickerContainer}>
                                     <Text style={styles.label}>Class Level</Text>
@@ -558,16 +770,24 @@ export default function UserManagement() {
                         )}
 
                         <View style={styles.modalActions}>
-                            <Button onPress={() => setVisible(false)} style={{ marginRight: 10 }}>Cancel</Button>
-                            <Button mode="contained" onPress={handleSave} loading={saving}>Save</Button>
+                            <Button variant="secondary" onPress={() => setVisible(false)} style={{ marginRight: tokens.spacing.sm }}>
+                                Cancel
+                            </Button>
+                            <Button variant="primary" onPress={handleSave} loading={saving}>
+                                Save
+                            </Button>
                         </View>
-                    </ScrollView>
-                </Modal>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
 
-                {/* Create User Modal */}
-                <Modal visible={createModalVisible} onDismiss={() => setCreateModalVisible(false)} contentContainerStyle={styles.modal}>
-                    <ScrollView>
-                        <Title style={{ marginBottom: 15 }}>Create New User</Title>
+            {/* Create User Modal */}
+            <Modal visible={createModalVisible} onRequestClose={() => setCreateModalVisible(false)} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modal, { backgroundColor: getSurfaceColor() }]}>
+                        <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
+                            <Text style={[styles.modalTitle, { color: getTextColor() }]}>Create New User</Text>
 
                         <SegmentedButtons
                             value={newUserRole}
@@ -579,9 +799,9 @@ export default function UserManagement() {
                             style={{ marginBottom: 15 }}
                         />
 
-                        <TextInput label="Full Name *" value={newUserName} onChangeText={setNewUserName} style={styles.input} />
-                        <TextInput label="Email *" value={newUserEmail} onChangeText={setNewUserEmail} autoCapitalize="none" keyboardType="email-address" style={styles.input} />
-                        <TextInput label="Password *" value={newUserPassword} onChangeText={setNewUserPassword} secureTextEntry style={styles.input} />
+                        <Input label="Full Name *" value={newUserName} onChangeText={setNewUserName} />
+                        <Input label="Email *" value={newUserEmail} onChangeText={setNewUserEmail} autoCapitalize="none" keyboardType="email-address" />
+                        <Input label="Password *" value={newUserPassword} onChangeText={setNewUserPassword} secureTextEntry />
 
                         {newUserRole === 'teacher' && (
                             <View style={styles.pickerContainer}>
@@ -596,7 +816,7 @@ export default function UserManagement() {
 
                         {newUserRole === 'student' && (
                             <>
-                                <TextInput label="Enrollment Number *" value={newUserEnrollment} onChangeText={setNewUserEnrollment} style={styles.input} />
+                                <Input label="Enrollment Number *" value={newUserEnrollment} onChangeText={setNewUserEnrollment} />
                                 <View style={styles.pickerContainer}>
                                     <Text style={styles.label}>Class Level</Text>
                                     <Picker selectedValue={newUserClassLevel} onValueChange={setNewUserClassLevel}>
@@ -619,12 +839,17 @@ export default function UserManagement() {
                         )}
 
                         <View style={styles.modalActions}>
-                            <Button onPress={() => setCreateModalVisible(false)} style={{ marginRight: 10 }}>Cancel</Button>
-                            <Button mode="contained" onPress={handleCreateUser} loading={creating}>Create</Button>
+                            <Button variant="secondary" onPress={() => setCreateModalVisible(false)} style={{ marginRight: tokens.spacing.sm }}>
+                                Cancel
+                            </Button>
+                            <Button variant="primary" onPress={handleCreateUser} loading={creating}>
+                                Create
+                            </Button>
                         </View>
-                    </ScrollView>
-                </Modal>
-            </Portal>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
 
             <ConfirmDialog
                 visible={deleteConfirmVisible}
@@ -633,28 +858,7 @@ export default function UserManagement() {
                 onConfirm={handleDelete}
                 onCancel={() => setDeleteConfirmVisible(false)}
             />
-        </View>
+            </View>
+        </GradientBackground>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: 'white', elevation: 2 },
-    statsContainer: { flexDirection: 'row', gap: 8, padding: 15, flexWrap: 'wrap' },
-    statCard: { flex: 1, minWidth: 100, padding: 12, borderRadius: 8, alignItems: 'center', elevation: 2 },
-    statValue: { fontSize: 20, fontWeight: 'bold' },
-    statLabel: { fontSize: 11, color: '#666', marginTop: 4, textAlign: 'center' },
-    filterButtons: { marginHorizontal: 15, marginBottom: 10 },
-    list: { padding: 15 },
-    card: { marginBottom: 10, backgroundColor: 'white' },
-    cardContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    userInfo: { flex: 1 },
-    email: { color: '#666', marginBottom: 5, marginTop: 2 },
-    badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 5 },
-    actions: { flexDirection: 'row' },
-    modal: { backgroundColor: 'white', padding: 20, margin: 20, borderRadius: 8, maxHeight: '80%' },
-    input: { marginBottom: 15, backgroundColor: 'white' },
-    pickerContainer: { backgroundColor: 'white', borderRadius: 4, borderWidth: 1, borderColor: '#ccc', marginBottom: 15 },
-    label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 8, color: '#333', paddingHorizontal: 10 },
-    modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
-});

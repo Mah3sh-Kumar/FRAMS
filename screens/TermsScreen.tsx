@@ -1,42 +1,42 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { Title, Paragraph, Card } from 'react-native-paper';
-import { colors, spacing } from '../lib/theme';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Card } from '../components/design-system/primitives';
+import { tokens } from '../lib/design-system/tokens';
 
 export default function TermsScreen() {
     return (
-        <ScrollView style={styles.container}>
-            <Card style={styles.card}>
-                <Card.Content>
-                    <Title style={styles.title}>Terms of Service</Title>
-                    <Paragraph style={styles.paragraph}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+            <Card>
+                <View style={styles.cardContent}>
+                    <Text style={styles.title}>Terms of Service</Text>
+                    <Text style={styles.paragraph}>
                         Last updated: {new Date().toLocaleDateString()}
-                    </Paragraph>
+                    </Text>
 
-                    <Title style={styles.subtitle}>1. Acceptance of Terms</Title>
-                    <Paragraph style={styles.paragraph}>
+                    <Text style={styles.subtitle}>1. Acceptance of Terms</Text>
+                    <Text style={styles.paragraph}>
                         By accessing or using FRAMS (Face Recognition & Attendance Management System), you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use our services.
-                    </Paragraph>
+                    </Text>
 
-                    <Title style={styles.subtitle}>2. User Responsibilities</Title>
-                    <Paragraph style={styles.paragraph}>
+                    <Text style={styles.subtitle}>2. User Responsibilities</Text>
+                    <Text style={styles.paragraph}>
                         You are responsible for:
                         {'\n'}- Maintaining the confidentiality of your account
                         {'\n'}- All activities that occur under your account
                         {'\n'}- Providing accurate and current information
                         {'\n'}- Ensuring your face data is accurate for attendance
-                    </Paragraph>
+                    </Text>
 
-                    <Title style={styles.subtitle}>3. Academic Integrity</Title>
-                    <Paragraph style={styles.paragraph}>
+                    <Text style={styles.subtitle}>3. Academic Integrity</Text>
+                    <Text style={styles.paragraph}>
                         Users must not attempt to manipulate attendance records or grades. Any such attempts will result in disciplinary action.
-                    </Paragraph>
+                    </Text>
 
-                    <Title style={styles.subtitle}>4. Modifications</Title>
-                    <Paragraph style={styles.paragraph}>
+                    <Text style={styles.subtitle}>4. Modifications</Text>
+                    <Text style={styles.paragraph}>
                         We reserve the right to modify these terms at any time. We will notify users of any significant changes.
-                    </Paragraph>
-                </Card.Content>
+                    </Text>
+                </View>
             </Card>
         </ScrollView>
     );
@@ -45,25 +45,33 @@ export default function TermsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background.default,
-        padding: spacing.md,
+        backgroundColor: tokens.colors.theme.light.background,
     },
-    card: {
-        marginBottom: spacing.md,
+    contentContainer: {
+        padding: tokens.spacing.md,
+    },
+    cardContent: {
+        padding: tokens.spacing.lg,
     },
     title: {
-        marginBottom: spacing.md,
-        fontSize: 24,
-        fontWeight: 'bold',
+        marginBottom: tokens.spacing.md,
+        fontSize: tokens.typography.h1.fontSize,
+        fontWeight: tokens.typography.h1.fontWeight,
+        lineHeight: tokens.typography.h1.lineHeight,
+        color: tokens.colors.theme.light.text,
     },
     subtitle: {
-        marginTop: spacing.md,
-        marginBottom: spacing.sm,
-        fontSize: 18,
-        fontWeight: 'bold',
+        marginTop: tokens.spacing.lg,
+        marginBottom: tokens.spacing.sm,
+        fontSize: tokens.typography.h3.fontSize,
+        fontWeight: tokens.typography.h3.fontWeight,
+        lineHeight: tokens.typography.h3.lineHeight,
+        color: tokens.colors.theme.light.text,
     },
     paragraph: {
-        marginBottom: spacing.sm,
-        lineHeight: 22,
+        marginBottom: tokens.spacing.md,
+        fontSize: tokens.typography.body.fontSize,
+        lineHeight: tokens.typography.body.lineHeight,
+        color: tokens.colors.theme.light.textSecondary,
     },
 });

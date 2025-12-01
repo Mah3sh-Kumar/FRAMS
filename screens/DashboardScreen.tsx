@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, Button, IconButton } from 'react-native-paper';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { IconButton } from 'react-native-paper';
 import { useAuth } from '../context/AuthContext';
+import { tokens } from '../lib/design-system/tokens';
 import StudentDashboard from './student/StudentDashboard';
 import TeacherDashboard from './teacher/TeacherDashboard';
 import AdminDashboard from './admin/AdminDashboard';
@@ -12,12 +13,21 @@ type Props = StackScreenProps<any, 'Dashboard'>;
 export default function DashboardScreen({ navigation }: Props) {
     const { session, role, signOut } = useAuth();
 
+    const getRoleGradient = () => {
+        switch (role) {
+            case 'student': return tokens.colors.roles.student.gradient;
+            case 'teacher': return tokens.colors.roles.teacher.gradient;
+            case 'admin': return tokens.colors.roles.admin.gradient;
+            default: return [tokens.colors.neutral.gray600, tokens.colors.neutral.gray700];
+        }
+    };
+
     const getRoleColor = () => {
         switch (role) {
-            case 'student': return '#3b82f6';
-            case 'teacher': return '#10b981';
-            case 'admin': return '#8b5cf6';
-            default: return '#64748b';
+            case 'student': return tokens.colors.roles.student.main;
+            case 'teacher': return tokens.colors.roles.teacher.main;
+            case 'admin': return tokens.colors.roles.admin.main;
+            default: return tokens.colors.neutral.gray600;
         }
     };
 
@@ -33,21 +43,24 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={styles.headerActions}>
                     <IconButton
                         icon="bell"
-                        iconColor="#ffffff"
-                        size={22}
+                        iconColor={tokens.colors.neutral.white}
+                        size={24}
                         onPress={() => navigation.navigate('Notifications')}
+                        style={{ minWidth: 48, minHeight: 48 }}
                     />
                     <IconButton
                         icon="account-circle"
-                        iconColor="#ffffff"
-                        size={22}
+                        iconColor={tokens.colors.neutral.white}
+                        size={24}
                         onPress={() => navigation.navigate('Profile')}
+                        style={{ minWidth: 48, minHeight: 48 }}
                     />
                     <IconButton
                         icon="cog"
-                        iconColor="#ffffff"
-                        size={22}
+                        iconColor={tokens.colors.neutral.white}
+                        size={24}
                         onPress={() => navigation.navigate('Settings')}
+                        style={{ minWidth: 48, minHeight: 48 }}
                     />
                 </View>
             </View>
@@ -67,13 +80,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        paddingTop: 48,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        padding: tokens.spacing.md,
+        paddingTop: tokens.spacing.xxl,
+        ...tokens.shadows.md,
     },
     headerInfo: {
         flex: 1,
@@ -81,24 +90,27 @@ const styles = StyleSheet.create({
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: tokens.spacing.xs,
     },
     email: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '500',
-        marginBottom: 4,
+        color: tokens.colors.neutral.white,
+        fontSize: tokens.typography.body.fontSize,
+        fontWeight: tokens.typography.body.fontWeight,
+        lineHeight: tokens.typography.body.lineHeight,
+        marginBottom: tokens.spacing.xs,
     },
     roleBadge: {
         backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 12,
+        paddingHorizontal: tokens.spacing.sm + tokens.spacing.xs,
+        paddingVertical: tokens.spacing.xs,
+        borderRadius: tokens.borders.medium,
         alignSelf: 'flex-start',
     },
     roleText: {
-        color: '#ffffff',
-        fontSize: 12,
-        fontWeight: '600',
+        color: tokens.colors.neutral.white,
+        fontSize: tokens.typography.caption.fontSize,
+        fontWeight: tokens.typography.h3.fontWeight,
+        lineHeight: tokens.typography.caption.lineHeight,
         textTransform: 'uppercase',
     },
     content: {
@@ -106,7 +118,9 @@ const styles = StyleSheet.create({
     },
     noRoleText: {
         textAlign: 'center',
-        marginTop: 20,
-        fontSize: 16,
+        marginTop: tokens.spacing.lg,
+        fontSize: tokens.typography.body.fontSize,
+        lineHeight: tokens.typography.body.lineHeight,
+        color: tokens.colors.theme.light.textSecondary,
     }
 });

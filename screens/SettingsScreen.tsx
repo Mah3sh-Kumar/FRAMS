@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { List, Switch, Divider, Button, Title, Card, Text } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Switch } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { colors, spacing, typography, shadows } from '../lib/theme';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import Button from '../components/design-system/primitives/Button';
+import Card from '../components/design-system/primitives/Card';
+import { Ionicons } from '@expo/vector-icons';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'Settings'>;
 
 export default function SettingsScreen({ navigation }: Props) {
     const { signOut } = useAuth();
+    const { tokens, mode, toggleMode, getBackgroundColor, getSurfaceColor, getTextColor, getTextSecondaryColor, getBorderColor } = useTheme();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [assignmentReminders, setAssignmentReminders] = useState(true);
     const [attendanceAlerts, setAttendanceAlerts] = useState(true);
@@ -22,138 +25,161 @@ export default function SettingsScreen({ navigation }: Props) {
         }
     };
 
+    const renderListItem = (
+        title: string,
+        description: string,
+        icon: string,
+        onPress?: () => void,
+        rightElement?: React.ReactNode
+    ) => (
+        <TouchableOpacity
+            style={[styles.listItem, { borderBottomColor: getBorderColor() }]}
+            onPress={onPress}
+            disabled={!onPress}
+        >
+            <View style={styles.listItemLeft}>
+                <Ionicons name={icon as any} size={24} color={tokens.colors.primary.main} style={styles.listIcon} />
+                <View style={styles.listItemText}>
+                    <Text style={[styles.listItemTitle, { color: getTextColor() }]}>{title}</Text>
+                    <Text style={[styles.listItemDescription, { color: getTextSecondaryColor() }]}>{description}</Text>
+                </View>
+            </View>
+            {rightElement || (onPress && <Ionicons name="chevron-forward" size={20} color={getTextSecondaryColor()} />)}
+        </TouchableOpacity>
+    );
+
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView style={[styles.container, { backgroundColor: getBackgroundColor() }]}>
+            {/* Appearance Section */}
             <Card style={styles.card}>
-                <Card.Content>
-                    <Title>Notifications</Title>
-                    <List.Item
-                        title="Enable Notifications"
-                        description="Receive push notifications"
-                        right={() => (
-                            <Switch
-                                value={notificationsEnabled}
-                                onValueChange={setNotificationsEnabled}
-                            />
-                        )}
+                <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Appearance</Text>
+                {renderListItem(
+                    'Dark Mode',
+                    mode === 'dark' ? 'Dark theme enabled' : 'Light theme enabled',
+                    'moon-outline',
+                    undefined,
+                    <Switch
+                        value={mode === 'dark'}
+                        onValueChange={toggleMode}
+                        trackColor={{ false: tokens.colors.neutral.gray300, true: tokens.colors.primary.light }}
+                        thumbColor={mode === 'dark' ? tokens.colors.primary.main : tokens.colors.neutral.white}
                     />
-                    <Divider />
-                    <List.Item
-                        title="Assignment Reminders"
-                        description="Get reminded about upcoming assignments"
+                )}
+            </Card>
+
+            {/* Notifications Section */}
+            <Card style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Notifications</Text>
+                {renderListItem(
+                    'Enable Notifications',
+                    'Receive push notifications',
+                    'notifications-outline',
+                    undefined,
+                    <Switch
+                        value={notificationsEnabled}
+                        onValueChange={setNotificationsEnabled}
+                        trackColor={{ false: tokens.colors.neutral.gray300, true: tokens.colors.primary.light }}
+                        thumbColor={notificationsEnabled ? tokens.colors.primary.main : tokens.colors.neutral.white}
+                    />
+                )}
+                {renderListItem(
+                    'Assignment Reminders',
+                    'Get reminded about upcoming assignments',
+                    'calendar-outline',
+                    undefined,
+                    <Switch
+                        value={assignmentReminders}
+                        onValueChange={setAssignmentReminders}
                         disabled={!notificationsEnabled}
-                        right={() => (
-                            <Switch
-                                value={assignmentReminders}
-                                onValueChange={setAssignmentReminders}
-                                disabled={!notificationsEnabled}
-                            />
-                        )}
+                        trackColor={{ false: tokens.colors.neutral.gray300, true: tokens.colors.primary.light }}
+                        thumbColor={assignmentReminders ? tokens.colors.primary.main : tokens.colors.neutral.white}
                     />
-                    <Divider />
-                    <List.Item
-                        title="Attendance Alerts"
-                        description="Get alerted about attendance issues"
+                )}
+                {renderListItem(
+                    'Attendance Alerts',
+                    'Get alerted about attendance issues',
+                    'alert-circle-outline',
+                    undefined,
+                    <Switch
+                        value={attendanceAlerts}
+                        onValueChange={setAttendanceAlerts}
                         disabled={!notificationsEnabled}
-                        right={() => (
-                            <Switch
-                                value={attendanceAlerts}
-                                onValueChange={setAttendanceAlerts}
-                                disabled={!notificationsEnabled}
-                            />
-                        )}
+                        trackColor={{ false: tokens.colors.neutral.gray300, true: tokens.colors.primary.light }}
+                        thumbColor={attendanceAlerts ? tokens.colors.primary.main : tokens.colors.neutral.white}
                     />
-                    <Divider />
-                    <List.Item
-                        title="Grade Notifications"
-                        description="Get notified when assignments are graded"
+                )}
+                {renderListItem(
+                    'Grade Notifications',
+                    'Get notified when assignments are graded',
+                    'school-outline',
+                    undefined,
+                    <Switch
+                        value={gradeNotifications}
+                        onValueChange={setGradeNotifications}
                         disabled={!notificationsEnabled}
-                        right={() => (
-                            <Switch
-                                value={gradeNotifications}
-                                onValueChange={setGradeNotifications}
-                                disabled={!notificationsEnabled}
-                            />
-                        )}
+                        trackColor={{ false: tokens.colors.neutral.gray300, true: tokens.colors.primary.light }}
+                        thumbColor={gradeNotifications ? tokens.colors.primary.main : tokens.colors.neutral.white}
                     />
-                </Card.Content>
+                )}
             </Card>
 
+            {/* Security Section */}
             <Card style={styles.card}>
-                <Card.Content>
-                    <Title>Security</Title>
-                    <List.Item
-                        title="Change Password"
-                        description="Update your password"
-                        left={props => <List.Icon {...props} icon="lock-reset" />}
-                        right={props => <List.Icon {...props} icon="chevron-right" />}
-                        onPress={() => {
-                            navigation.navigate('ChangePassword');
-                        }}
-                    />
-                </Card.Content>
+                <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Security</Text>
+                {renderListItem(
+                    'Change Password',
+                    'Update your password',
+                    'lock-closed-outline',
+                    () => navigation.navigate('ChangePassword')
+                )}
             </Card>
 
+            {/* About Section */}
             <Card style={styles.card}>
-                <Card.Content>
-                    <Title>About</Title>
-                    <List.Item
-                        title="App Version"
-                        description="1.0.0"
-                        left={props => <List.Icon {...props} icon="information" />}
-                    />
-                    <Divider />
-                    <List.Item
-                        title="Privacy Policy"
-                        description="View our privacy policy"
-                        left={props => <List.Icon {...props} icon="shield-check" />}
-                        right={props => <List.Icon {...props} icon="chevron-right" />}
-                        onPress={() => {
-                            navigation.navigate('PrivacyPolicy');
-                        }}
-                    />
-                    <Divider />
-                    <List.Item
-                        title="Terms of Service"
-                        description="View terms of service"
-                        left={props => <List.Icon {...props} icon="file-document" />}
-                        right={props => <List.Icon {...props} icon="chevron-right" />}
-                        onPress={() => {
-                            navigation.navigate('Terms');
-                        }}
-                    />
-                </Card.Content>
+                <Text style={[styles.sectionTitle, { color: getTextColor() }]}>About</Text>
+                {renderListItem(
+                    'App Version',
+                    '1.0.0',
+                    'information-circle-outline'
+                )}
+                {renderListItem(
+                    'Privacy Policy',
+                    'View our privacy policy',
+                    'shield-checkmark-outline',
+                    () => navigation.navigate('PrivacyPolicy')
+                )}
+                {renderListItem(
+                    'Terms of Service',
+                    'View terms of service',
+                    'document-text-outline',
+                    () => navigation.navigate('Terms')
+                )}
             </Card>
 
+            {/* Actions Section */}
             <Card style={styles.card}>
-                <Card.Content>
-                    <Title>Actions</Title>
-                    <List.Item
-                        title="Clear Cache"
-                        description="Free up storage space"
-                        left={props => <List.Icon {...props} icon="delete" />}
-                        right={props => <List.Icon {...props} icon="chevron-right" />}
-                        onPress={() => {
-                            alert('Cache cleared successfully');
-                        }}
-                    />
-                </Card.Content>
+                <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Actions</Text>
+                {renderListItem(
+                    'Clear Cache',
+                    'Free up storage space',
+                    'trash-outline',
+                    () => alert('Cache cleared successfully')
+                )}
             </Card>
 
+            {/* Sign Out Button */}
             <View style={styles.signOutContainer}>
                 <Button
-                    mode="contained"
+                    variant="danger"
                     onPress={handleSignOut}
-                    icon="logout"
-                    buttonColor={colors.error.main}
-                    style={styles.signOutButton}
                 >
                     Sign Out
                 </Button>
             </View>
 
+            {/* Footer */}
             <View style={styles.footer}>
-                <Text style={styles.footerText}>
+                <Text style={[styles.footerText, { color: getTextSecondaryColor() }]}>
                     Made with ❤️ for Education
                 </Text>
             </View>
@@ -164,26 +190,53 @@ export default function SettingsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background.default,
     },
     card: {
-        margin: spacing.md,
-        marginBottom: 0,
-        ...shadows.sm,
+        marginHorizontal: 16,
+        marginTop: 16,
+    },
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: 8,
+    },
+    listItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+    },
+    listItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    listIcon: {
+        marginRight: 16,
+    },
+    listItemText: {
+        flex: 1,
+    },
+    listItemTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    listItemDescription: {
+        fontSize: 14,
+        lineHeight: 20,
     },
     signOutContainer: {
-        padding: spacing.md,
-        paddingTop: spacing.xl,
-    },
-    signOutButton: {
-        paddingVertical: spacing.xs,
+        paddingHorizontal: 16,
+        paddingTop: 32,
+        paddingBottom: 16,
     },
     footer: {
-        padding: spacing.xl,
+        paddingVertical: 32,
         alignItems: 'center',
     },
     footerText: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.disabled,
+        fontSize: 14,
     },
 });

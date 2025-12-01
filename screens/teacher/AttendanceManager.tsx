@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
-import { Title, Card, Text, Button, ActivityIndicator, SegmentedButtons, Menu, Divider, Surface, IconButton, Portal, Modal } from 'react-native-paper';
+import { View, StyleSheet, FlatList, Alert, ScrollView, Text, TouchableOpacity, TextInput } from 'react-native';
+import { Menu, Divider, Portal, Modal, ActivityIndicator as PaperActivityIndicator } from 'react-native-paper';
 import { useAuth } from '../../context/AuthContext';
 import { fetchTeacherSubjects, fetchStudentsByClass, markAttendance } from '../../lib/database';
-import DateRangePicker from '../../components/DateRangePicker';
-import FilterBar from '../../components/FilterBar';
+import { useTheme } from '../../lib/design-system/ThemeContext';
+import Button from '../../components/design-system/primitives/Button';
+import Card from '../../components/design-system/primitives/Card';
+import { Stack } from '../../components/design-system/layout';
+import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
+import StudentProfileCard from '../../components/design-system/attendance/StudentProfileCard';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { supabase } from '../../lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 export default function AttendanceManager() {
     const { user } = useAuth();
+    const { tokens, getTextColor, getTextSecondaryColor, getSurfaceColor, getBackgroundColor } = useTheme();
     const [subjects, setSubjects] = useState<any[]>([]);
     const [selectedSubject, setSelectedSubject] = useState<any>(null);
     const [students, setStudents] = useState<any[]>([]);
@@ -25,6 +31,7 @@ export default function AttendanceManager() {
     const [stats, setStats] = useState({ present: 0, absent: 0, late: 0, total: 0 });
     const [bulkConfirmVisible, setBulkConfirmVisible] = useState(false);
     const [bulkAction, setBulkAction] = useState<'present' | 'absent' | null>(null);
+    const [attendanceData, setAttendanceData] = useState<Record<string, 'present' | 'absent' | 'late' | 'pending'>>({});
 
     useEffect(() => {
         if (user) {
@@ -64,8 +71,29 @@ export default function AttendanceManager() {
             Alert.alert('Error', error);
         } else {
             setStudents(data);
+            // Load existing attendance for the selected date
+            await loadExistingAttendance(data);
         }
         setLoading(false);
+    }
+
+    async function loadExistingAttendance(studentList: any[]) {
+        if (!selectedSubject) return;
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        
+        const { data, error } = await supabase
+            .from('attendance')
+            .select('student_id, status')
+            .eq('subject_id', selectedSubject.id)
+            .eq('date', dateStr);
+
+        if (!error && data) {
+            const attendanceMap: Record<string, 'present' | 'absent' | 'late'> = {};
+            data.forEach(record => {
+                attendanceMap[record.student_id] = record.status;
+            });
+            setAttendanceData(attendanceMap);
+        }
     }
 
     async function loadAttendanceStats() {
@@ -97,6 +125,7 @@ export default function AttendanceManager() {
         if (error) {
             Alert.alert('Error', error);
         } else {
+            setAttendanceData(prev => ({ ...prev, [studentId]: status }));
             loadAttendanceStats();
         }
         setMarking(prev => ({ ...prev, [studentId]: false }));
@@ -150,19 +179,139 @@ export default function AttendanceManager() {
         return matchesSearch;
     });
 
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: getBackgroundColor(),
+        },
+        scrollContent: {
+            padding: tokens.spacing.md,
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.lg,
+        },
+        selectorContainer: {
+            marginBottom: tokens.spacing.md,
+        },
+        dateContainer: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginVertical: tokens.spacing.md,
+            gap: tokens.spacing.sm,
+        },
+        dateText: {
+            fontSize: tokens.typography.body.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+            flex: 1,
+            textAlign: 'center',
+        },
+        statsContainer: {
+            flexDirection: 'row',
+            gap: tokens.spacing.sm,
+            marginVertical: tokens.spacing.md,
+        },
+        statCard: {
+            flex: 1,
+            padding: tokens.spacing.md,
+            borderRadius: tokens.borders.radius.medium,
+            alignItems: 'center',
+            ...tokens.shadows.sm,
+        },
+        statValue: {
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+            color: getTextColor(),
+        },
+        statLabel: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            marginTop: tokens.spacing.xs,
+        },
+        bulkActions: {
+            flexDirection: 'row',
+            gap: tokens.spacing.sm,
+            marginVertical: tokens.spacing.md,
+        },
+        searchContainer: {
+            marginBottom: tokens.spacing.md,
+        },
+        searchInput: {
+            backgroundColor: getSurfaceColor(),
+            borderRadius: tokens.borders.radius.medium,
+            padding: tokens.spacing.md,
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextColor(),
+            borderWidth: 1,
+            borderColor: tokens.colors.neutral.gray300,
+        },
+        studentCard: {
+            marginBottom: tokens.spacing.md,
+        },
+        studentHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: tokens.spacing.sm,
+        },
+        studentName: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+        },
+        enrollment: {
+            color: getTextSecondaryColor(),
+            fontSize: tokens.typography.caption.fontSize,
+            marginTop: tokens.spacing.xs,
+        },
+        actionContainer: {
+            flexDirection: 'row',
+            gap: tokens.spacing.sm,
+            marginTop: tokens.spacing.sm,
+        },
+        actionButton: {
+            flex: 1,
+        },
+        emptyText: {
+            textAlign: 'center',
+            marginTop: tokens.spacing.xl,
+            color: getTextSecondaryColor(),
+            fontSize: tokens.typography.body.fontSize,
+            fontStyle: 'italic',
+        },
+        menuButton: {
+            backgroundColor: getSurfaceColor(),
+            borderRadius: tokens.borders.radius.medium,
+            padding: tokens.spacing.md,
+            borderWidth: 1,
+            borderColor: tokens.colors.neutral.gray300,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        menuButtonText: {
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextColor(),
+        },
+    });
+
     if (loading && !students.length) {
         return (
-            <View style={styles.loaderContainer}>
-                <ActivityIndicator size="large" />
-                <Text style={{ marginTop: 10 }}>Loading...</Text>
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <LoadingSpinner size="large" />
+                <Text style={{ marginTop: tokens.spacing.md, color: getTextColor() }}>Loading...</Text>
             </View>
         );
     }
 
     return (
         <View style={styles.container}>
-            <ScrollView>
-                <Title style={styles.title}>Attendance Manager</Title>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <Text style={styles.title}>Attendance Manager</Text>
 
                 {/* Subject Selector */}
                 <View style={styles.selectorContainer}>
@@ -170,13 +319,15 @@ export default function AttendanceManager() {
                         visible={menuVisible}
                         onDismiss={() => setMenuVisible(false)}
                         anchor={
-                            <Button
-                                mode="outlined"
+                            <TouchableOpacity
+                                style={styles.menuButton}
                                 onPress={() => setMenuVisible(true)}
-                                icon="chevron-down"
                             >
-                                {selectedSubject ? `${selectedSubject.name} (${selectedSubject.classes?.name})` : 'Select Subject'}
-                            </Button>
+                                <Text style={styles.menuButtonText}>
+                                    {selectedSubject ? `${selectedSubject.name} (${selectedSubject.classes?.name})` : 'Select Subject'}
+                                </Text>
+                                <Ionicons name="chevron-down" size={20} color={getTextColor()} />
+                            </TouchableOpacity>
                         }
                     >
                         {subjects.map((subject) => (
@@ -196,16 +347,16 @@ export default function AttendanceManager() {
                 {selectedSubject && (
                     <View style={styles.dateContainer}>
                         <Button 
-                            mode="outlined" 
-                            icon="calendar"
+                            variant="secondary"
+                            size="small"
                             onPress={() => {
-                                // Simple date navigation
                                 const newDate = new Date(selectedDate);
                                 newDate.setDate(newDate.getDate() - 1);
                                 setSelectedDate(newDate);
                             }}
+                            icon={<Ionicons name="chevron-back" size={16} color={getTextColor()} />}
                         >
-                            Previous
+                            Prev
                         </Button>
                         <Text style={styles.dateText}>
                             {selectedDate.toLocaleDateString('en-US', { 
@@ -216,13 +367,14 @@ export default function AttendanceManager() {
                             })}
                         </Text>
                         <Button 
-                            mode="outlined" 
-                            icon="calendar"
+                            variant="secondary"
+                            size="small"
                             onPress={() => {
                                 const newDate = new Date(selectedDate);
                                 newDate.setDate(newDate.getDate() + 1);
                                 setSelectedDate(newDate);
                             }}
+                            icon={<Ionicons name="chevron-forward" size={16} color={getTextColor()} />}
                         >
                             Next
                         </Button>
@@ -232,116 +384,167 @@ export default function AttendanceManager() {
                 {/* Statistics */}
                 {selectedSubject && stats.total > 0 && (
                     <View style={styles.statsContainer}>
-                        <Surface style={[styles.statCard, { backgroundColor: '#e8f5e9' }]}>
+                        <View style={[styles.statCard, { backgroundColor: tokens.colors.success.light }]}>
                             <Text style={styles.statValue}>{stats.present}</Text>
                             <Text style={styles.statLabel}>Present</Text>
-                        </Surface>
-                        <Surface style={[styles.statCard, { backgroundColor: '#ffebee' }]}>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: tokens.colors.error.light }]}>
                             <Text style={styles.statValue}>{stats.absent}</Text>
                             <Text style={styles.statLabel}>Absent</Text>
-                        </Surface>
-                        <Surface style={[styles.statCard, { backgroundColor: '#fff3e0' }]}>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: tokens.colors.warning.light }]}>
                             <Text style={styles.statValue}>{stats.late}</Text>
                             <Text style={styles.statLabel}>Late</Text>
-                        </Surface>
-                        <Surface style={[styles.statCard, { backgroundColor: '#e3f2fd' }]}>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: tokens.colors.info.light }]}>
                             <Text style={styles.statValue}>{stats.total}</Text>
                             <Text style={styles.statLabel}>Total</Text>
-                        </Surface>
+                        </View>
                     </View>
                 )}
 
                 {/* Bulk Actions */}
                 {selectedSubject && (
                     <View style={styles.bulkActions}>
+                        <View style={{ flex: 1 }}>
+                            <Button 
+                                variant="primary"
+                                onPress={() => {
+                                    setBulkAction('present');
+                                    setBulkConfirmVisible(true);
+                                }}
+                                icon={<Ionicons name="checkmark-done" size={20} color={tokens.colors.neutral.white} />}
+                            >
+                                Mark All Present
+                            </Button>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Button 
+                                variant="danger"
+                                onPress={() => {
+                                    setBulkAction('absent');
+                                    setBulkConfirmVisible(true);
+                                }}
+                                icon={<Ionicons name="close-circle" size={20} color={tokens.colors.neutral.white} />}
+                            >
+                                Mark All Absent
+                            </Button>
+                        </View>
                         <Button 
-                            mode="contained" 
-                            icon="check-all"
-                            onPress={() => {
-                                setBulkAction('present');
-                                setBulkConfirmVisible(true);
-                            }}
-                            style={styles.bulkButton}
-                        >
-                            Mark All Present
-                        </Button>
-                        <Button 
-                            mode="contained" 
-                            icon="close-circle"
-                            onPress={() => {
-                                setBulkAction('absent');
-                                setBulkConfirmVisible(true);
-                            }}
-                            buttonColor="#d32f2f"
-                            style={styles.bulkButton}
-                        >
-                            Mark All Absent
-                        </Button>
-                        <IconButton 
-                            icon="export" 
-                            mode="contained"
+                            variant="ghost"
                             onPress={exportAttendance}
-                        />
+                            icon={<Ionicons name="download" size={20} color={tokens.colors.primary.main} />}
+                        >
+                            Export
+                        </Button>
                     </View>
                 )}
 
                 {/* Search */}
                 {selectedSubject && (
-                    <FilterBar
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                        searchPlaceholder="Search students..."
-                    />
+                    <View style={styles.searchContainer}>
+                        <View style={{ position: 'relative' }}>
+                            <Ionicons 
+                                name="search" 
+                                size={20} 
+                                color={getTextSecondaryColor()} 
+                                style={{ position: 'absolute', left: tokens.spacing.md, top: 16, zIndex: 1 }}
+                            />
+                            <TextInput
+                                placeholder="Search students..."
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                style={[styles.searchInput, { paddingLeft: tokens.spacing.xl + tokens.spacing.sm }]}
+                                placeholderTextColor={getTextSecondaryColor()}
+                            />
+                        </View>
+                    </View>
                 )}
 
-                <Divider style={{ marginVertical: 10 }} />
-
                 {selectedSubject ? (
-                    <FlatList
-                        data={filteredStudents}
-                        keyExtractor={(item) => item.id}
-                        scrollEnabled={false}
-                        ListEmptyComponent={<Text style={styles.emptyText}>No students found.</Text>}
-                        renderItem={({ item }) => (
-                            <Card style={styles.card}>
-                                <Card.Content>
-                                    <View style={styles.studentHeader}>
-                                        <View>
-                                            <Title style={styles.studentName}>{item.full_name}</Title>
-                                            <Text style={styles.enrollment}>{item.enrollment_number}</Text>
+                    <Stack spacing="md">
+                        {filteredStudents.length === 0 ? (
+                            <Text style={styles.emptyText}>No students found.</Text>
+                        ) : (
+                            filteredStudents.map((item) => {
+                                const currentStatus = attendanceData[item.id] || 'pending';
+                                // Mock attendance stats - in real app, fetch from database
+                                const attendanceStats = {
+                                    present: 18,
+                                    absent: 2,
+                                    total: 20,
+                                };
+                                
+                                return (
+                                    <Card key={item.id} variant="elevated" style={styles.studentCard}>
+                                        <View style={styles.studentHeader}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.studentName}>{item.full_name}</Text>
+                                                <Text style={styles.enrollment}>{item.enrollment_number}</Text>
+                                            </View>
+                                            {currentStatus !== 'pending' && (
+                                                <View style={{
+                                                    backgroundColor: currentStatus === 'present' 
+                                                        ? tokens.colors.success.light 
+                                                        : currentStatus === 'absent'
+                                                        ? tokens.colors.error.light
+                                                        : tokens.colors.warning.light,
+                                                    paddingHorizontal: tokens.spacing.sm,
+                                                    paddingVertical: tokens.spacing.xs,
+                                                    borderRadius: tokens.borders.radius.small,
+                                                }}>
+                                                    <Text style={{
+                                                        fontSize: tokens.typography.caption.fontSize,
+                                                        fontWeight: tokens.typography.body.fontWeight,
+                                                        color: currentStatus === 'present' 
+                                                            ? tokens.colors.success.main 
+                                                            : currentStatus === 'absent'
+                                                            ? tokens.colors.error.main
+                                                            : tokens.colors.warning.main,
+                                                    }}>
+                                                        {currentStatus.toUpperCase()}
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </View>
-                                    </View>
 
-                                    <View style={styles.actionContainer}>
-                                        <SegmentedButtons
-                                            value=""
-                                            onValueChange={(val) => handleMarkAttendance(item.id, val as any)}
-                                            buttons={[
-                                                {
-                                                    value: 'present',
-                                                    label: 'Present',
-                                                    style: { backgroundColor: '#e8f5e9' },
-                                                    showSelectedCheck: true
-                                                },
-                                                {
-                                                    value: 'absent',
-                                                    label: 'Absent',
-                                                    style: { backgroundColor: '#ffebee' }
-                                                },
-                                                {
-                                                    value: 'late',
-                                                    label: 'Late',
-                                                    style: { backgroundColor: '#fff3e0' }
-                                                },
-                                            ]}
-                                            style={styles.segmentedButton}
-                                        />
-                                        {marking[item.id] && <ActivityIndicator size="small" style={{ marginLeft: 10 }} />}
-                                    </View>
-                                </Card.Content>
-                            </Card>
+                                        <View style={styles.actionContainer}>
+                                            <Button
+                                                variant={currentStatus === 'present' ? 'primary' : 'secondary'}
+                                                size="small"
+                                                onPress={() => handleMarkAttendance(item.id, 'present')}
+                                                loading={marking[item.id]}
+                                                style={styles.actionButton}
+                                                icon={<Ionicons name="checkmark-circle" size={16} color={currentStatus === 'present' ? tokens.colors.neutral.white : tokens.colors.success.main} />}
+                                            >
+                                                Present
+                                            </Button>
+                                            <Button
+                                                variant={currentStatus === 'absent' ? 'danger' : 'secondary'}
+                                                size="small"
+                                                onPress={() => handleMarkAttendance(item.id, 'absent')}
+                                                loading={marking[item.id]}
+                                         style={styles.actionButton}
+                                                icon={<Ionicons name="close-circle" size={16} color={currentStatus === 'absent' ? tokens.colors.neutral.white : tokens.colors.error.main} />}
+                                            >
+                                                Absent
+                                    </Button>
+                                            <Button
+                                                variant={currentStatus === 'late' ? 'primary' : 'secondary'}
+                                                size="small"
+                                                onPress={() => handleMarkAttendance(item.id, 'late')}
+                                                loading={marking[item.id]}
+                                                style={styles.actionButton}
+                                                icon={<Ionicons name="time" size={16} color={currentStatus === 'late' ? tokens.colors.neutral.white : tokens.colors.warning.main} />}
+                                            >
+                                                Late
+                                            </Button>
+                                        </View>
+                                    </Card>
+                                );
+                            })
                         )}
-                    />
+                    </Stack>
                 ) : (
                     <Text style={styles.emptyText}>Please select a subject to load students.</Text>
                 )}
@@ -357,94 +560,3 @@ export default function AttendanceManager() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: '#f5f5f5',
-    },
-    loaderContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    title: {
-        fontSize: 24,
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    selectorContainer: {
-        marginBottom: 10,
-    },
-    dateContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginVertical: 15,
-    },
-    dateText: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        gap: 10,
-        marginVertical: 15,
-    },
-    statCard: {
-        flex: 1,
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        elevation: 2,
-    },
-    statValue: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    statLabel: {
-        fontSize: 12,
-        color: '#666',
-        marginTop: 4,
-    },
-    bulkActions: {
-        flexDirection: 'row',
-        gap: 10,
-        marginVertical: 10,
-        alignItems: 'center',
-    },
-    bulkButton: {
-        flex: 1,
-    },
-    card: {
-        marginBottom: 10,
-        elevation: 2,
-    },
-    studentHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    studentName: {
-        fontSize: 18,
-    },
-    enrollment: {
-        color: '#666',
-        fontSize: 14,
-    },
-    actionContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    segmentedButton: {
-        flex: 1,
-    },
-    emptyText: {
-        textAlign: 'center',
-        marginTop: 20,
-        color: '#666',
-        fontStyle: 'italic',
-    },
-});

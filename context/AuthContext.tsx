@@ -7,6 +7,7 @@ import {
     createTeacherProfile,
     getUserRole,
 } from '../lib/database';
+import { devLog } from '../lib/performance';
 
 type UserRole = 'admin' | 'teacher' | 'student' | null;
 
@@ -56,13 +57,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const fetchUserRole = async (userId: string) => {
         try {
-            console.log('🔍 fetchUserRole called for userId:', userId);
+            devLog.log('🔍 fetchUserRole called for userId:', userId);
             let attempts = 0;
-            const maxAttempts = 3;
+            const maxAttempts = 2; // Reduced from 3
             let userData = null;
 
             while (attempts < maxAttempts) {
-                console.log(`🔍 Attempt ${attempts + 1}/${maxAttempts} to fetch user data for ${userId}`);
+                devLog.log(`🔍 Attempt ${attempts + 1}/${maxAttempts} to fetch user data for ${userId}`);
                 
                 // Fetch both role and verification status
                 const { data, error } = await supabase
@@ -72,38 +73,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     .single();
 
                 if (error) {
-                    console.error(`❌ Error fetching user data (Attempt ${attempts + 1}):`, error);
+                    devLog.error(`❌ Error fetching user data (Attempt ${attempts + 1}):`, error);
                     // PGRST116 means "No rows found" - profile might not be created yet by trigger
                     if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
-                        console.log(`🟡 User profile not found (Attempt ${attempts + 1}/${maxAttempts}). Retrying in 1s...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        devLog.log(`🟡 User profile not found (Attempt ${attempts + 1}/${maxAttempts}). Retrying in 300ms...`);
+                        await new Promise(resolve => setTimeout(resolve, 300)); // Reduced from 1000ms
                         attempts++;
                         continue;
                     }
 
-                    console.error('❌ Fatal error fetching user data:', error);
+                    devLog.error('❌ Fatal error fetching user data:', error);
                     setRole(null);
                     setIsVerified(false);
                     return;
                 }
 
-                console.log('✅ User data received:', data);
+                devLog.log('✅ User data received:', data);
                 userData = data;
                 break;
             }
 
             if (userData) {
-                console.log(`✅ Setting role to: "${userData.role}" and verified: ${userData.is_verified} for user ${userId}`);
+                devLog.log(`✅ Setting role to: "${userData.role}" and verified: ${userData.is_verified} for user ${userId}`);
                 setRole(userData.role as UserRole);
                 setIsVerified(userData.is_verified || false);
             } else {
-                console.error('❌ Failed to fetch user data after multiple attempts.');
-                console.error('❌ User will have role = null and verified = false');
+                devLog.error('❌ Failed to fetch user data after multiple attempts.');
+                devLog.error('❌ User will have role = null and verified = false');
                 setRole(null);
                 setIsVerified(false);
             }
         } catch (error) {
-            console.error('❌ CRASH in fetchUserRole:', error);
+            devLog.error('❌ CRASH in fetchUserRole:', error);
             setRole(null);
             setIsVerified(false);
         } finally {
@@ -120,7 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const { data: { session }, error } = await supabase.auth.getSession();
 
                 if (error) {
-                    console.error('Auth check error:', error);
+                    devLog.error('Auth check error:', error);
                     if (mounted) setLoading(false);
                     return;
                 }
@@ -135,7 +136,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     }
                 }
             } catch (e) {
-                console.error('Unexpected auth init error:', e);
+                devLog.error('Unexpected auth init error:', e);
                 if (mounted) setLoading(false);
             }
         }
@@ -193,14 +194,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const signUp = async (payload: SignUpPayload): Promise<{ error: string | null }> => {
-        console.log('🟢 AuthContext.signUp called with payload:', { ...payload, password: '***' });
+        devLog.log('🟢 AuthContext.signUp called with payload:', { ...payload, password: '***' });
         try {
             setLoading(true);
             setError(null);
 
             // Step 1: Create auth user with metadata
             // The database trigger will handle creating the public.users profile
-            console.log('🟢 Step 1: Creating auth user with metadata...');
+            devLog.log('🟢 Step 1: Creating auth user with metadata...');
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: payload.email,
                 password: payload.password,
@@ -213,7 +214,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             });
 
             if (authError) {
-                console.error('❌ Auth signup error:', authError);
+                devLog.error('❌ Auth signup error:', authError);
                 const errorMsg = authError.message || 'Signup failed';
                 setError(errorMsg);
                 setLoading(false);
@@ -221,7 +222,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             if (!authData.user) {
-                console.error('❌ No user data returned from auth signup');
+                devLog.error('❌ No user data returned from auth signup');
                 const errorMsg = 'User creation failed';
                 setError(errorMsg);
                 setLoading(false);
@@ -229,11 +230,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             const userId = authData.user.id;
-            console.log('✅ Auth user created with ID:', userId);
+            devLog.log('✅ Auth user created with ID:', userId);
 
             // Check if session exists (email confirmation might be required)
             if (!authData.session) {
-                console.log('⚠️ No session returned. Email verification likely required.');
+                devLog.log('⚠️ No session returned. Email verification likely required.');
                 setLoading(false);
                 return { error: null }; // Return success, UI should show "Check your email" message
             }
@@ -243,13 +244,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // If email verification is on, this part will happen after they click the link and log in
             // For now, we'll assume if we have a session, we can proceed.
 
-            // Wait a bit for the trigger to create the user profile
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Wait a bit for the trigger to create the user profile (reduced delay)
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             if (payload.role === 'student') {
-                console.log('🟢 Step 2: Creating student profile...');
+                devLog.log('🟢 Step 2: Creating student profile...');
                 if (!payload.enrollmentNumber) {
-                    console.error('❌ Missing enrollment number for student');
+                    devLog.error('❌ Missing enrollment number for student');
                     const errorMsg = 'Enrollment number is required for students';
                     setError(errorMsg);
                     setLoading(false);
@@ -265,38 +266,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 );
 
                 if (studentError) {
-                    console.error('❌ Failed to create student profile:', studentError);
+                    devLog.error('❌ Failed to create student profile:', studentError);
                     // Don't fail the whole signup, just warn
                     // setError('Profile creation failed. Please contact support.');
                 } else {
-                    console.log('✅ Student profile created');
+                    devLog.log('✅ Student profile created');
                 }
             } else if (payload.role === 'teacher') {
-                console.log('🟢 Step 2: Creating teacher profile...');
+                devLog.log('🟢 Step 2: Creating teacher profile...');
                 const { error: teacherError } = await createTeacherProfile(
                     userId,
                     payload.department || ''
                 );
 
                 if (teacherError) {
-                    console.error('❌ Failed to create teacher profile:', teacherError);
+                    devLog.error('❌ Failed to create teacher profile:', teacherError);
                 } else {
-                    console.log('✅ Teacher profile created');
+                    devLog.log('✅ Teacher profile created');
                 }
             }
 
             // Step 3: Set user and role in context
-            console.log('🟢 Step 3: Setting user and role in context...');
+            devLog.log('🟢 Step 3: Setting user and role in context...');
             setUser(authData.user);
             setRole(payload.role);
             setLoading(false);
 
-            console.log('✅ Signup completed successfully!');
+            devLog.log('✅ Signup completed successfully!');
             return { error: null };
         } catch (err: any) {
-            console.error('❌ CRASH in AuthContext.signUp:', err);
-            console.error('❌ Error message:', err.message);
-            console.error('❌ Error stack:', err.stack);
+            devLog.error('❌ CRASH in AuthContext.signUp:', err);
+            devLog.error('❌ Error message:', err.message);
+            devLog.error('❌ Error stack:', err.stack);
             const errorMsg = err.message || 'An unexpected error occurred';
             setError(errorMsg);
             setLoading(false);

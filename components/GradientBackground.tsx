@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../lib/theme';
+import { tokens } from '../lib/design-system/tokens';
 
 type GradientVariant = 'primary' | 'secondary' | 'student' | 'teacher' | 'admin';
 
@@ -21,17 +21,17 @@ export default function GradientBackground({
 
         switch (variant) {
             case 'primary':
-                return colors.primary.gradient;
+                return tokens.colors.primary.gradient;
             case 'secondary':
-                return colors.secondary.gradient;
+                return tokens.colors.accent.gradient;
             case 'student':
-                return colors.student.gradient;
+                return tokens.colors.roles.student.gradient;
             case 'teacher':
-                return colors.teacher.gradient;
+                return tokens.colors.roles.teacher.gradient;
             case 'admin':
-                return colors.admin.gradient;
+                return tokens.colors.roles.admin.gradient;
             default:
-                return colors.primary.gradient;
+                return tokens.colors.primary.gradient;
         }
     };
 

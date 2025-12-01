@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, Text, Title, HelperText } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import Button from '../components/design-system/primitives/Button';
+import Input from '../components/design-system/primitives/Input';
+import Card from '../components/design-system/primitives/Card';
+import { Ionicons } from '@expo/vector-icons';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../lib/types';
 
 type Props = StackScreenProps<RootStackParamList, 'ChangePassword'>;
 
 export default function ChangePasswordScreen({ navigation }: Props) {
+    const { tokens, getBackgroundColor, getSurfaceColor, getTextColor, getTextSecondaryColor } = useTheme();
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -78,82 +83,95 @@ export default function ChangePasswordScreen({ navigation }: Props) {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <View style={styles.content}>
-                <Title style={styles.title}>Change Password</Title>
-                <Text style={styles.subtitle}>
+        <ScrollView 
+            contentContainerStyle={[styles.container, { backgroundColor: getBackgroundColor() }]}
+            keyboardShouldPersistTaps="always"
+            showsVerticalScrollIndicator={false}
+        >
+            <Card style={styles.card}>
+                <Text style={[styles.title, { color: getTextColor() }]}>Change Password</Text>
+                <Text style={[styles.subtitle, { color: getTextSecondaryColor() }]}>
                     Enter your current password and choose a new one
                 </Text>
 
                 <View style={styles.form}>
-                    <TextInput
-                        label="Current Password"
-                        value={currentPassword}
-                        onChangeText={(text) => {
-                            setCurrentPassword(text);
-                            setErrorMsg('');
-                        }}
-                        secureTextEntry={!showCurrentPassword}
-                        autoCapitalize="none"
-                        style={styles.input}
-                        disabled={isSubmitting}
-                        mode="outlined"
-                        right={
-                            <TextInput.Icon
-                                icon={showCurrentPassword ? 'eye-off' : 'eye'}
-                                onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                            />
-                        }
-                    />
+                    <View style={styles.inputWrapper}>
+                        <Input
+                            label="Current Password"
+                            value={currentPassword}
+                            onChangeText={(text) => {
+                                setCurrentPassword(text);
+                                setErrorMsg('');
+                            }}
+                            secureTextEntry={!showCurrentPassword}
+                            autoCapitalize="none"
+                            disabled={isSubmitting}
+                            icon={
+                                <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
+                                    <Ionicons 
+                                        name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                        size={24} 
+                                        color={tokens.colors.neutral.gray500} 
+                                    />
+                                </TouchableOpacity>
+                            }
+                        />
+                    </View>
 
-                    <TextInput
-                        label="New Password"
-                        value={newPassword}
-                        onChangeText={(text) => {
-                            setNewPassword(text);
-                            setErrorMsg('');
-                        }}
-                        secureTextEntry={!showNewPassword}
-                        autoCapitalize="none"
-                        style={styles.input}
-                        disabled={isSubmitting}
-                        mode="outlined"
-                        right={
-                            <TextInput.Icon
-                                icon={showNewPassword ? 'eye-off' : 'eye'}
-                                onPress={() => setShowNewPassword(!showNewPassword)}
-                            />
-                        }
-                    />
+                    <View style={styles.inputWrapper}>
+                        <Input
+                            label="New Password"
+                            value={newPassword}
+                            onChangeText={(text) => {
+                                setNewPassword(text);
+                                setErrorMsg('');
+                            }}
+                            secureTextEntry={!showNewPassword}
+                            autoCapitalize="none"
+                            disabled={isSubmitting}
+                            icon={
+                                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
+                                    <Ionicons 
+                                        name={showNewPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                        size={24} 
+                                        color={tokens.colors.neutral.gray500} 
+                                    />
+                                </TouchableOpacity>
+                            }
+                        />
+                    </View>
 
-                    <TextInput
-                        label="Confirm New Password"
-                        value={confirmPassword}
-                        onChangeText={(text) => {
-                            setConfirmPassword(text);
-                            setErrorMsg('');
-                        }}
-                        secureTextEntry={!showConfirmPassword}
-                        autoCapitalize="none"
-                        style={styles.input}
-                        disabled={isSubmitting}
-                        mode="outlined"
-                        right={
-                            <TextInput.Icon
-                                icon={showConfirmPassword ? 'eye-off' : 'eye'}
-                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                            />
-                        }
-                    />
+                    <View style={styles.inputWrapper}>
+                        <Input
+                            label="Confirm New Password"
+                            value={confirmPassword}
+                            onChangeText={(text) => {
+                                setConfirmPassword(text);
+                                setErrorMsg('');
+                            }}
+                            secureTextEntry={!showConfirmPassword}
+                            autoCapitalize="none"
+                            disabled={isSubmitting}
+                            icon={
+                                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                    <Ionicons 
+                                        name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                        size={24} 
+                                        color={tokens.colors.neutral.gray500} 
+                                    />
+                                </TouchableOpacity>
+                            }
+                        />
+                    </View>
 
                     {errorMsg ? (
-                        <HelperText type="error" visible={!!errorMsg} style={styles.errorText}>
+                        <Text style={styles.errorText}>
                             {errorMsg}
-                        </HelperText>
+                        </Text>
                     ) : null}
 
                     <Button
-                        mode="contained"
+                        variant="primary"
                         onPress={handleChangePassword}
                         loading={isSubmitting}
                         disabled={isSubmitting || !currentPassword || !newPassword || !confirmPassword}
@@ -163,15 +181,14 @@ export default function ChangePasswordScreen({ navigation }: Props) {
                     </Button>
 
                     <Button
-                        mode="text"
+                        variant="ghost"
                         onPress={() => navigation.goBack()}
                         disabled={isSubmitting}
-                        style={styles.cancelButton}
                     >
                         Cancel
                     </Button>
                 </View>
-            </View>
+            </Card>
         </ScrollView>
     );
 }
@@ -179,38 +196,37 @@ export default function ChangePasswordScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
     container: {
         flexGrow: 1,
-        backgroundColor: '#f5f5f5',
+        padding: 16,
     },
-    content: {
-        padding: 20,
+    card: {
+        marginTop: 16,
     },
     title: {
+        fontSize: 26,
+        fontWeight: '700',
         textAlign: 'center',
         marginBottom: 8,
-        fontSize: 24,
-        fontWeight: 'bold',
     },
     subtitle: {
+        fontSize: 15,
         textAlign: 'center',
-        marginBottom: 30,
-        fontSize: 14,
-        color: '#666',
+        marginBottom: 24,
+        lineHeight: 22,
     },
     form: {
         width: '100%',
     },
-    input: {
-        marginBottom: 16,
-        backgroundColor: 'white',
+    inputWrapper: {
+        marginBottom: 0,
     },
     errorText: {
-        marginBottom: 8,
+        fontSize: 14,
+        color: '#EF4444',
+        marginBottom: 16,
+        marginTop: -8,
     },
     submitButton: {
         marginTop: 8,
-        paddingVertical: 6,
-    },
-    cancelButton: {
-        marginTop: 8,
+        marginBottom: 12,
     },
 });

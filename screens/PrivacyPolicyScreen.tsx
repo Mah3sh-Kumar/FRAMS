@@ -1,46 +1,46 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { Title, Paragraph, Card } from 'react-native-paper';
-import { colors, spacing } from '../lib/theme';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Card } from '../components/design-system/primitives';
+import { tokens } from '../lib/design-system/tokens';
 
 export default function PrivacyPolicyScreen() {
     return (
-        <ScrollView style={styles.container}>
-            <Card style={styles.card}>
-                <Card.Content>
-                    <Title style={styles.title}>Privacy Policy</Title>
-                    <Paragraph style={styles.paragraph}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+            <Card>
+                <View style={styles.cardContent}>
+                    <Text style={styles.title}>Privacy Policy</Text>
+                    <Text style={styles.paragraph}>
                         Last updated: {new Date().toLocaleDateString()}
-                    </Paragraph>
+                    </Text>
                     
-                    <Title style={styles.subtitle}>1. Information We Collect</Title>
-                    <Paragraph style={styles.paragraph}>
+                    <Text style={styles.subtitle}>1. Information We Collect</Text>
+                    <Text style={styles.paragraph}>
                         We collect information you provide directly to us, such as when you create an account, update your profile, or use our services. This includes:
                         {'\n'}- Name and contact information
                         {'\n'}- Student/Employee ID
                         {'\n'}- Profile pictures and face data for attendance
                         {'\n'}- Academic records and attendance history
-                    </Paragraph>
+                    </Text>
 
-                    <Title style={styles.subtitle}>2. How We Use Your Information</Title>
-                    <Paragraph style={styles.paragraph}>
+                    <Text style={styles.subtitle}>2. How We Use Your Information</Text>
+                    <Text style={styles.paragraph}>
                         We use the information we collect to:
                         {'\n'}- Provide, maintain, and improve our services
                         {'\n'}- Process attendance and grades
                         {'\n'}- Send notifications and updates
                         {'\n'}- Authenticate your identity
-                    </Paragraph>
+                    </Text>
 
-                    <Title style={styles.subtitle}>3. Data Security</Title>
-                    <Paragraph style={styles.paragraph}>
+                    <Text style={styles.subtitle}>3. Data Security</Text>
+                    <Text style={styles.paragraph}>
                         We take reasonable measures to help protect information about you from loss, theft, misuse and unauthorized access, disclosure, alteration and destruction.
-                    </Paragraph>
+                    </Text>
 
-                    <Title style={styles.subtitle}>4. Contact Us</Title>
-                    <Paragraph style={styles.paragraph}>
+                    <Text style={styles.subtitle}>4. Contact Us</Text>
+                    <Text style={styles.paragraph}>
                         If you have any questions about this Privacy Policy, please contact the administration.
-                    </Paragraph>
-                </Card.Content>
+                    </Text>
+                </View>
             </Card>
         </ScrollView>
     );
@@ -49,25 +49,33 @@ export default function PrivacyPolicyScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background.default,
-        padding: spacing.md,
+        backgroundColor: tokens.colors.theme.light.background,
     },
-    card: {
-        marginBottom: spacing.md,
+    contentContainer: {
+        padding: tokens.spacing.md,
+    },
+    cardContent: {
+        padding: tokens.spacing.lg,
     },
     title: {
-        marginBottom: spacing.md,
-        fontSize: 24,
-        fontWeight: 'bold',
+        marginBottom: tokens.spacing.md,
+        fontSize: tokens.typography.h1.fontSize,
+        fontWeight: tokens.typography.h1.fontWeight,
+        lineHeight: tokens.typography.h1.lineHeight,
+        color: tokens.colors.theme.light.text,
     },
     subtitle: {
-        marginTop: spacing.md,
-        marginBottom: spacing.sm,
-        fontSize: 18,
-        fontWeight: 'bold',
+        marginTop: tokens.spacing.lg,
+        marginBottom: tokens.spacing.sm,
+        fontSize: tokens.typography.h3.fontSize,
+        fontWeight: tokens.typography.h3.fontWeight,
+        lineHeight: tokens.typography.h3.lineHeight,
+        color: tokens.colors.theme.light.text,
     },
     paragraph: {
-        marginBottom: spacing.sm,
-        lineHeight: 22,
+        marginBottom: tokens.spacing.md,
+        fontSize: tokens.typography.body.fontSize,
+        lineHeight: tokens.typography.body.lineHeight,
+        color: tokens.colors.theme.light.textSecondary,
     },
 });
