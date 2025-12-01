@@ -109,14 +109,14 @@ The system eliminates manual attendance processes, reduces proxy attendance, and
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         FRAMS System                         │
+│                         FRAMS System                        │
 └─────────────────────────────────────────────────────────────┘
 
 ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
 │   Edge Layer     │      │   Cloud Layer    │      │  Client Layer    │
 │                  │      │                  │      │                  │
 │  Raspberry Pi    │◄────►│    Supabase      │◄────►│  Mobile App      │
-│  + Camera        │ HTTPS │                  │ HTTPS│  (React Native)  │
+│  + Camera        │ HTTPS│                  │ HTTPS│  (React Native)  │
 │  + OpenCV        │      │  - PostgreSQL    │      │                  │
 │  + Face Recog    │      │  - Auth          │      │  - Student UI    │
 │                  │      │  - Storage       │      │  - Teacher UI    │
@@ -564,5 +564,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Made with ❤️ for better education management**
 
 ⭐ Star this repo if you find it helpful!
+
 
 </div>
