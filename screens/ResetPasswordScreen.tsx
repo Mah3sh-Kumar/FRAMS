@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, Title, HelperText, Card } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { colors, spacing, typography } from '../lib/theme';
 import { validatePassword } from '../lib/validation';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList } from '../lib/types';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import Button from '../components/design-system/primitives/Button';
+import Input from '../components/design-system/primitives/Input';
+import { Stack } from '../components/design-system/layout';
 
 type Props = StackScreenProps<RootStackParamList, 'ResetPassword'>;
 
 export default function ResetPasswordScreen({ navigation, route }: Props) {
+    const { tokens, getTextColor, getSurfaceColor } = useTheme();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -21,12 +24,10 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
     const [token, setToken] = useState<string | null>(null);
 
     useEffect(() => {
-        // Extract token from route params
         const tokenParam = route.params?.token;
         if (tokenParam) {
             setToken(tokenParam);
         } else {
-            // No token provided, redirect to forgot password
             setErrorMsg('Invalid or missing reset token. Please request a new password reset link.');
             setTimeout(() => {
                 navigation.replace('ForgotPassword');
@@ -42,14 +43,12 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
         setErrorMsg('');
         setSuccessMsg('');
 
-        // Validate password
         const validation = validatePassword(password);
         if (!validation.isValid) {
             setErrorMsg(validation.errors.join('. '));
             return;
         }
 
-        // Check password match
         if (!checkPasswordMatch()) {
             setErrorMsg('Passwords do not match');
             return;
@@ -68,7 +67,6 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
             });
 
             if (error) {
-                // Check if token is invalid or expired
                 if (error.message.toLowerCase().includes('token') || 
                     error.message.toLowerCase().includes('expired')) {
                     setErrorMsg('Your reset link has expired. Please request a new one.');
@@ -96,148 +94,131 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
         return validation.isValid && checkPasswordMatch() && !isSubmitting;
     };
 
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: tokens.colors.theme.light.background,
+        },
+        scrollContent: {
+            flexGrow: 1,
+            justifyContent: 'center',
+            padding: tokens.spacing.lg,
+        },
+        content: {
+            maxWidth: 400,
+            width: '100%',
+            alignSelf: 'center',
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: getTextColor(),
+            textAlign: 'center',
+            marginBottom: tokens.spacing.xs,
+        },
+        subtitle: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+            textAlign: 'center',
+            marginBottom: tokens.spacing.xl,
+        },
+        errorText: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.error.main,
+            textAlign: 'center',
+            marginTop: tokens.spacing.md,
+        },
+        successText: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.success.main,
+            textAlign: 'center',
+            marginTop: tokens.spacing.md,
+        },
+        backLink: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.primary.main,
+            fontWeight: tokens.typography.h3.fontWeight,
+            textAlign: 'center',
+            marginTop: tokens.spacing.lg,
+        },
+    });
+
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
+                showsVerticalScrollIndicator={false}
             >
                 <View style={styles.content}>
-                    <Title style={styles.title}>Set New Password</Title>
+                    <Text style={styles.title}>Set New Password</Text>
                     <Text style={styles.subtitle}>
                         Enter your new password below. Make sure it's at least 8 characters long.
                     </Text>
 
-                    <Card style={styles.card}>
-                        <Card.Content>
-                            <TextInput
-                                label="New Password"
-                                value={password}
-                                onChangeText={(text) => {
-                                    setPassword(text);
-                                    setErrorMsg('');
-                                    setSuccessMsg('');
-                                }}
-                                secureTextEntry={!showPassword}
-                                autoCapitalize="none"
-                                style={styles.input}
-                                disabled={isSubmitting}
-                                mode="outlined"
-                                error={!!errorMsg && !password}
-                                right={
-                                    <TextInput.Icon
-                                        icon={showPassword ? 'eye-off' : 'eye'}
-                                        onPress={() => setShowPassword(!showPassword)}
-                                    />
-                                }
-                            />
+                    <Stack spacing="md">
+                        <Input
+                            label="New Password"
+                            value={password}
+                            onChangeText={(text) => {
+                                setPassword(text);
+                                setErrorMsg('');
+                                setSuccessMsg('');
+                            }}
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                            disabled={isSubmitting}
+                            error={!!errorMsg && !password ? 'Password is required' : undefined}
+                        />
 
-                            {password ? (
-                                <PasswordStrengthIndicator password={password} />
-                            ) : null}
+                        {password ? (
+                            <PasswordStrengthIndicator password={password} />
+                        ) : null}
 
-                            <TextInput
-                                label="Confirm Password"
-                                value={confirmPassword}
-                                onChangeText={(text) => {
-                                    setConfirmPassword(text);
-                                    setErrorMsg('');
-                                    setSuccessMsg('');
-                                }}
-                                secureTextEntry={!showConfirmPassword}
-                                autoCapitalize="none"
-                                style={styles.input}
-                                disabled={isSubmitting}
-                                mode="outlined"
-                                error={!!errorMsg && !confirmPassword}
-                                right={
-                                    <TextInput.Icon
-                                        icon={showConfirmPassword ? 'eye-off' : 'eye'}
-                                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    />
-                                }
-                            />
+                        <Input
+                            label="Confirm Password"
+                            value={confirmPassword}
+                            onChangeText={(text) => {
+                                setConfirmPassword(text);
+                                setErrorMsg('');
+                                setSuccessMsg('');
+                            }}
+                            secureTextEntry={!showConfirmPassword}
+                            autoCapitalize="none"
+                            disabled={isSubmitting}
+                            error={!!errorMsg && !confirmPassword ? 'Please confirm password' : undefined}
+                        />
 
-                            {errorMsg ? (
-                                <HelperText type="error" visible={!!errorMsg}>
-                                    {errorMsg}
-                                </HelperText>
-                            ) : null}
+                        {errorMsg ? (
+                            <Text style={styles.errorText}>{errorMsg}</Text>
+                        ) : null}
 
-                            {successMsg ? (
-                                <HelperText type="info" visible={!!successMsg} style={styles.successText}>
-                                    {successMsg}
-                                </HelperText>
-                            ) : null}
+                        {successMsg ? (
+                            <Text style={styles.successText}>{successMsg}</Text>
+                        ) : null}
 
-                            <Button
-                                mode="contained"
-                                onPress={handleResetPassword}
-                                loading={isSubmitting}
-                                disabled={!isFormValid()}
-                                style={styles.button}
-                            >
-                                Reset Password
-                            </Button>
+                        <Button
+                            variant="primary"
+                            onPress={handleResetPassword}
+                            loading={isSubmitting}
+                            disabled={!isFormValid()}
+                        >
+                            Reset Password
+                        </Button>
 
-                            <Button
-                                mode="text"
-                                onPress={() => navigation.navigate('SignIn')}
-                                disabled={isSubmitting}
-                                style={styles.backButton}
-                            >
-                                Back to Sign In
-                            </Button>
-                        </Card.Content>
-                    </Card>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('SignIn')}
+                            disabled={isSubmitting}
+                        >
+                            <Text style={styles.backLink}>Back to Sign In</Text>
+                        </TouchableOpacity>
+                    </Stack>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background.default,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: 'center',
-    },
-    content: {
-        padding: spacing.lg,
-    },
-    title: {
-        textAlign: 'center',
-        marginBottom: spacing.sm,
-        fontSize: typography.fontSize.xxl,
-        fontWeight: typography.fontWeight.bold,
-    },
-    subtitle: {
-        textAlign: 'center',
-        marginBottom: spacing.xl,
-        fontSize: typography.fontSize.md,
-        color: colors.text.secondary,
-    },
-    card: {
-        padding: spacing.md,
-    },
-    input: {
-        marginBottom: spacing.sm,
-        backgroundColor: colors.background.paper,
-    },
-    button: {
-        marginTop: spacing.md,
-        paddingVertical: spacing.xs,
-    },
-    backButton: {
-        marginTop: spacing.sm,
-    },
-    successText: {
-        color: colors.success.main,
-    },
-});

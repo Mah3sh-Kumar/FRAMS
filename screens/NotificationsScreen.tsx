@@ -10,9 +10,9 @@ import {
     subscribeToNotifications,
     type Notification,
 } from '../lib/notifications';
-import { colors, spacing, typography, shadows } from '../lib/theme';
+import { tokens } from '../lib/design-system/tokens';
 import EmptyState from '../components/EmptyState';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { LoadingSpinner } from '../components/design-system/feedback';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'Notifications'>;
@@ -95,13 +95,13 @@ export default function NotificationsScreen({ navigation }: Props) {
     const getIconColor = (type: string) => {
         switch (type) {
             case 'assignment':
-                return colors.info.main;
+                return tokens.colors.info.main;
             case 'grade':
-                return colors.success.main;
+                return tokens.colors.success.main;
             case 'attendance':
-                return colors.warning.main;
+                return tokens.colors.warning.main;
             default:
-                return colors.primary.main;
+                return tokens.colors.primary.main;
         }
     };
 
@@ -153,9 +153,10 @@ export default function NotificationsScreen({ navigation }: Props) {
                         <Text style={styles.date}>{formatDate(item.created_at)}</Text>
                         <IconButton
                             icon="delete"
-                            size={16}
-                            iconColor={colors.error.main}
+                            size={20}
+                            iconColor={tokens.colors.error.main}
                             onPress={() => handleDelete(item.id)}
+                            style={{ minWidth: 48, minHeight: 48 }}
                         />
                     </View>
                 </View>
@@ -213,33 +214,39 @@ export default function NotificationsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background.default,
+        backgroundColor: tokens.colors.theme.light.background,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: spacing.md,
-        backgroundColor: colors.background.paper,
-        ...shadows.sm,
+        padding: tokens.spacing.md,
+        backgroundColor: tokens.colors.theme.light.surface,
+        ...tokens.shadows.sm,
     },
     listContent: {
-        padding: spacing.md,
+        padding: tokens.spacing.md,
     },
     notificationCard: {
-        marginBottom: spacing.md,
-        ...shadows.sm,
+        marginBottom: tokens.spacing.md,
+        borderRadius: tokens.borders.medium,
+        ...tokens.shadows.sm,
     },
     unreadCard: {
-        backgroundColor: colors.primary.light + '10',
+        backgroundColor: tokens.colors.primary.light + '10',
         borderLeftWidth: 4,
-        borderLeftColor: colors.primary.main,
+        borderLeftColor: tokens.colors.primary.main,
     },
     cardContent: {
         flexDirection: 'row',
+        padding: tokens.spacing.md,
     },
     iconContainer: {
-        marginRight: spacing.sm,
+        marginRight: tokens.spacing.sm,
+        minWidth: 48,
+        minHeight: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     icon: {
         margin: 0,
@@ -250,33 +257,37 @@ const styles = StyleSheet.create({
     titleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: spacing.xs,
+        marginBottom: tokens.spacing.xs,
     },
     title: {
-        fontSize: typography.fontSize.md,
-        fontWeight: typography.fontWeight.semibold,
-        color: colors.text.primary,
+        fontSize: tokens.typography.h3.fontSize,
+        fontWeight: tokens.typography.h3.fontWeight,
+        lineHeight: tokens.typography.h3.lineHeight,
+        color: tokens.colors.theme.light.text,
         flex: 1,
     },
     unreadDot: {
         width: 8,
         height: 8,
-        borderRadius: 4,
-        backgroundColor: colors.primary.main,
-        marginLeft: spacing.xs,
+        borderRadius: tokens.borders.full,
+        backgroundColor: tokens.colors.primary.main,
+        marginLeft: tokens.spacing.xs,
     },
     message: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-        marginBottom: spacing.xs,
+        fontSize: tokens.typography.body.fontSize,
+        lineHeight: tokens.typography.body.lineHeight,
+        color: tokens.colors.theme.light.textSecondary,
+        marginBottom: tokens.spacing.xs,
     },
     date: {
-        fontSize: typography.fontSize.xs,
-        color: colors.text.disabled,
+        fontSize: tokens.typography.caption.fontSize,
+        lineHeight: tokens.typography.caption.lineHeight,
+        color: tokens.colors.neutral.gray500,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        minHeight: 48,
     },
 });

@@ -1,19 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, Alert, ScrollView, Dimensions } from 'react-native';
-import { Title, Button, Card, ActivityIndicator, Text, Surface, IconButton, Chip, Menu, SegmentedButtons } from 'react-native-paper';
+import { View, StyleSheet, FlatList, Alert, ScrollView, Text, Dimensions, TextInput as RNTextInput } from 'react-native';
+import { Menu } from 'react-native-paper';
 import { BarChart } from 'react-native-chart-kit';
 import { fetchTeacherAssignments, fetchAssignmentSubmissions } from '../../lib/database';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../lib/design-system/ThemeContext';
 import { supabase } from '../../lib/supabase';
-import FilterBar from '../../components/FilterBar';
+import Button from '../../components/design-system/primitives/Button';
+import Card from '../../components/design-system/primitives/Card';
+import { Stack } from '../../components/design-system/layout';
+import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
 import DateRangePicker from '../../components/DateRangePicker';
-import ChartCard from '../../components/ChartCard';
-import EmptyState from '../../components/EmptyState';
+import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 export default function MarksReviewManager() {
     const { user } = useAuth();
+    const { tokens, getTextColor, getTextSecondaryColor, getSurfaceColor } = useTheme();
     const [submissions, setSubmissions] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -137,68 +141,193 @@ export default function MarksReviewManager() {
         }
     };
 
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: tokens.colors.background.main,
+        },
+        scrollContent: {
+            padding: tokens.spacing.md,
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: tokens.spacing.md,
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: getTextColor(),
+        },
+        statsContainer: {
+            flexDirection: 'row',
+            gap: tokens.spacing.sm,
+            marginBottom: tokens.spacing.md,
+        },
+        statCard: {
+            flex: 1,
+            padding: tokens.spacing.md,
+            borderRadius: tokens.borders.radius.medium,
+            alignItems: 'center',
+            ...tokens.shadows.sm,
+        },
+        statValue: {
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+            color: getTextColor(),
+        },
+        statLabel: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            marginTop: tokens.spacing.xs,
+        },
+        searchInput: {
+            backgroundColor: getSurfaceColor(),
+            borderRadius: tokens.borders.radius.medium,
+            padding: tokens.spacing.md,
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextColor(),
+            borderWidth: 1,
+            borderColor: tokens.colors.neutral.gray300,
+            marginBottom: tokens.spacing.md,
+        },
+        sortButtons: {
+            flexDirection: 'row',
+            gap: tokens.spacing.sm,
+            marginVertical: tokens.spacing.md,
+        },
+        sortButton: {
+            flex: 1,
+        },
+        card: {
+            marginBottom: tokens.spacing.md,
+        },
+        submissionHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: tokens.spacing.sm,
+        },
+        studentName: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+        },
+        enrollmentText: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            marginTop: tokens.spacing.xs,
+        },
+        assignmentText: {
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextColor(),
+            marginTop: tokens.spacing.xs,
+        },
+        subjectText: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            marginTop: tokens.spacing.xs,
+        },
+        scoreContainer: {
+            alignItems: 'flex-end',
+        },
+        scoreBadge: {
+            paddingHorizontal: tokens.spacing.sm,
+            paddingVertical: tokens.spacing.xs,
+            borderRadius: tokens.borders.radius.small,
+        },
+        scoreText: {
+            fontSize: tokens.typography.body.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+        },
+        percentageText: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            marginTop: tokens.spacing.xs,
+        },
+        dateText: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            marginTop: tokens.spacing.xs,
+        },
+    });
+
     if (loading) {
         return (
-            <View style={styles.loader}>
-                <ActivityIndicator size="large" />
-                <Text style={{ marginTop: 10 }}>Loading marks...</Text>
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <LoadingSpinner size="large" />
+                <Text style={{ marginTop: tokens.spacing.md, color: getTextColor() }}>Loading marks...</Text>
             </View>
         );
     }
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
             <View style={styles.header}>
-                <Title style={styles.title}>Marks & Reviews</Title>
-                <IconButton icon="export" mode="contained" onPress={exportToCSV} />
+                <Text style={styles.title}>Marks & Reviews</Text>
+                <Button 
+                    variant="ghost"
+                    onPress={exportToCSV}
+                    icon={<Ionicons name="download" size={20} color={tokens.colors.primary.main} />}
+                >
+                    Export
+                </Button>
             </View>
 
             <View style={styles.statsContainer}>
-                <Surface style={[styles.statCard, { backgroundColor: '#e3f2fd' }]}>
+                <View style={[styles.statCard, { backgroundColor: tokens.colors.info.light }]}>
                     <Text style={styles.statValue}>{stats.totalGraded}</Text>
                     <Text style={styles.statLabel}>Total Graded</Text>
-                </Surface>
-                <Surface style={[styles.statCard, { backgroundColor: '#f3e5f5' }]}>
+                </View>
+                <View style={[styles.statCard, { backgroundColor: tokens.colors.accent.light }]}>
                     <Text style={styles.statValue}>{stats.avgScore.toFixed(1)}</Text>
                     <Text style={styles.statLabel}>Avg Score</Text>
-                </Surface>
-                <Surface style={[styles.statCard, { backgroundColor: '#e8f5e9' }]}>
+                </View>
+                <View style={[styles.statCard, { backgroundColor: tokens.colors.success.light }]}>
                     <Text style={styles.statValue}>{stats.highestScore}</Text>
                     <Text style={styles.statLabel}>Highest</Text>
-                </Surface>
-                <Surface style={[styles.statCard, { backgroundColor: '#ffebee' }]}>
+                </View>
+                <View style={[styles.statCard, { backgroundColor: tokens.colors.error.light }]}>
                     <Text style={styles.statValue}>{stats.lowestScore}</Text>
                     <Text style={styles.statLabel}>Lowest</Text>
-                </Surface>
+                </View>
             </View>
 
             {filteredSubmissions.length > 0 && (
-                <ChartCard title="Grade Distribution">
+                <Card variant="elevated" style={{ marginBottom: tokens.spacing.md }}>
+                    <Text style={[styles.title, { fontSize: tokens.typography.h3.fontSize, marginBottom: tokens.spacing.md }]}>
+                        Grade Distribution
+                    </Text>
                     <BarChart
                         data={chartData}
-                        width={Dimensions.get('window').width - 64}
+                        width={Dimensions.get('window').width - (tokens.spacing.md * 4)}
                         height={220}
                         yAxisLabel=""
                         yAxisSuffix=""
                         chartConfig={{
-                            backgroundColor: '#ffffff',
-                            backgroundGradientFrom: '#ffffff',
-                            backgroundGradientTo: '#ffffff',
+                            backgroundColor: getSurfaceColor(),
+                            backgroundGradientFrom: getSurfaceColor(),
+                            backgroundGradientTo: getSurfaceColor(),
                             decimalPlaces: 0,
-                            color: (opacity = 1) => `rgba(98, 0, 238, ${opacity})`,
-                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                            color: (opacity = 1) => tokens.colors.primary.main,
+                            labelColor: (opacity = 1) => getTextColor(),
                         }}
-                        style={{ marginVertical: 8, borderRadius: 16 }}
+                        style={{ marginVertical: tokens.spacing.sm, borderRadius: tokens.borders.radius.medium }}
                     />
-                </ChartCard>
+                </Card>
             )}
 
-            <View style={styles.filtersContainer}>
+            <View style={{ marginBottom: tokens.spacing.md }}>
                 <Menu
                     visible={subjectMenuVisible}
                     onDismiss={() => setSubjectMenuVisible(false)}
                     anchor={
-                        <Button mode="outlined" onPress={() => setSubjectMenuVisible(true)} icon="book">
+                        <Button 
+                            variant="secondary"
+                            onPress={() => setSubjectMenuVisible(true)}
+                            icon={<Ionicons name="book" size={20} color={getTextColor()} />}
+                        >
                             {selectedSubject === 'all' ? 'All Subjects' : subjects.find(s => s.id === selectedSubject)?.name}
                         </Button>
                     }
@@ -217,76 +346,89 @@ export default function MarksReviewManager() {
                 onEndDateChange={(date: Date) => setDateRange({ ...dateRange, end: date })}
             />
 
-            <FilterBar searchQuery={searchQuery} onSearchChange={setSearchQuery} searchPlaceholder="Search students..." />
-
-            <SegmentedButtons
-                value={sortBy}
-                onValueChange={(value) => setSortBy(value as any)}
-                buttons={[
-                    { value: 'date', label: 'Date', icon: 'calendar' },
-                    { value: 'name', label: 'Name', icon: 'account' },
-                    { value: 'score', label: 'Score', icon: 'star' },
-                ]}
-                style={styles.sortButtons}
+            <RNTextInput
+                placeholder="Search students..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                style={styles.searchInput}
+                placeholderTextColor={getTextSecondaryColor()}
             />
 
+            <View style={styles.sortButtons}>
+                <Button
+                    variant={sortBy === 'date' ? 'primary' : 'secondary'}
+                    size="small"
+                    onPress={() => setSortBy('date')}
+                    style={styles.sortButton}
+                    icon={<Ionicons name="calendar" size={16} color={sortBy === 'date' ? tokens.colors.neutral.white : getTextColor()} />}
+                >
+                    Date
+                </Button>
+                <Button
+                    variant={sortBy === 'name' ? 'primary' : 'secondary'}
+                    size="small"
+                    onPress={() => setSortBy('name')}
+                    style={styles.sortButton}
+                    icon={<Ionicons name="person" size={16} color={sortBy === 'name' ? tokens.colors.neutral.white : getTextColor()} />}
+                >
+                    Name
+                </Button>
+                <Button
+                    variant={sortBy === 'score' ? 'primary' : 'secondary'}
+                    size="small"
+                    onPress={() => setSortBy('score')}
+                    style={styles.sortButton}
+                    icon={<Ionicons name="star" size={16} color={sortBy === 'score' ? tokens.colors.neutral.white : getTextColor()} />}
+                >
+                    Score
+                </Button>
+            </View>
+
             {sortedSubmissions.length === 0 ? (
-                <EmptyState icon="file-document-outline" title="No graded submissions found" />
+                <Text style={{ textAlign: 'center', marginTop: tokens.spacing.xl, color: getTextSecondaryColor() }}>
+                    No graded submissions found
+                </Text>
             ) : (
-                <FlatList
-                    data={sortedSubmissions}
-                    keyExtractor={(item) => item.id}
-                    scrollEnabled={false}
-                    renderItem={({ item }) => {
+                <Stack spacing="md">
+                    {sortedSubmissions.map((item) => {
                         const percentage = ((item.score / item.max_score) * 100).toFixed(0);
+                        const scoreColor = item.score >= 80 
+                            ? tokens.colors.success.main 
+                            : item.score >= 60 
+                            ? tokens.colors.warning.main 
+                            : tokens.colors.error.main;
+                        const scoreBgColor = item.score >= 80 
+                            ? tokens.colors.success.light 
+                            : item.score >= 60 
+                            ? tokens.colors.warning.light 
+                            : tokens.colors.error.light;
+                        
                         return (
-                            <Card style={styles.card}>
-                                <Card.Content>
-                                    <View style={styles.submissionHeader}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.studentName}>{item.student_name}</Text>
-                                            <Text style={styles.enrollmentText}>{item.enrollment_number}</Text>
-                                            <Text style={styles.assignmentText}>{item.assignment_title}</Text>
-                                            <Text style={styles.subjectText}>{item.subject_name}</Text>
-                                        </View>
-                                        <View style={styles.scoreContainer}>
-                                            <Chip icon="star" style={{ backgroundColor: item.score >= 80 ? '#e8f5e9' : item.score >= 60 ? '#fff3e0' : '#ffebee' }}>
-                                                {item.score}/{item.max_score}
-                                            </Chip>
-                                            <Text style={styles.percentageText}>{percentage}%</Text>
-                                        </View>
+                            <Card key={item.id} variant="elevated" style={styles.card}>
+                                <View style={styles.submissionHeader}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.studentName}>{item.student_name}</Text>
+                                        <Text style={styles.enrollmentText}>{item.enrollment_number}</Text>
+                                        <Text style={styles.assignmentText}>{item.assignment_title}</Text>
+                                        <Text style={styles.subjectText}>{item.subject_name}</Text>
                                     </View>
-                                    <Text style={styles.dateText}>
-                                        {new Date(item.created_at).toLocaleDateString()}
-                                    </Text>
-                                </Card.Content>
+                                    <View style={styles.scoreContainer}>
+                                        <View style={[styles.scoreBadge, { backgroundColor: scoreBgColor }]}>
+                                            <Text style={[styles.scoreText, { color: scoreColor }]}>
+                                                {item.score}/{item.max_score}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.percentageText}>{percentage}%</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.dateText}>
+                                    {new Date(item.created_at).toLocaleDateString()}
+                                </Text>
                             </Card>
                         );
-                    }}
-                />
+                    })}
+                </Stack>
             )}
         </ScrollView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    title: { fontSize: 24 },
-    loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    statsContainer: { flexDirection: 'row', gap: 10, marginBottom: 15 },
-    statCard: { flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', elevation: 2 },
-    statValue: { fontSize: 20, fontWeight: 'bold' },
-    statLabel: { fontSize: 11, color: '#666', marginTop: 4 },
-    filtersContainer: { marginVertical: 10 },
-    sortButtons: { marginVertical: 10 },
-    card: { marginBottom: 10, elevation: 2 },
-    submissionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-    studentName: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-    enrollmentText: { fontSize: 12, color: '#666', marginTop: 2 },
-    assignmentText: { fontSize: 14, color: '#333', marginTop: 4 },
-    subjectText: { fontSize: 12, color: '#999', marginTop: 2 },
-    scoreContainer: { alignItems: 'flex-end' },
-    percentageText: { fontSize: 12, color: '#666', marginTop: 4 },
-    dateText: { fontSize: 11, color: '#999', marginTop: 4 },
-});

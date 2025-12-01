@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Button, Text, Title, Card, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import type { StackScreenProps } from '@react-navigation/stack';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import Button from '../components/design-system/primitives/Button';
+import Card from '../components/design-system/primitives/Card';
+import { Stack } from '../components/design-system/layout';
 
 type Props = StackScreenProps<any, 'EmailVerification'>;
 
 export default function EmailVerificationScreen({ navigation, route }: Props) {
+    const { tokens, getTextColor, getSurfaceColor } = useTheme();
     const email = route.params?.email || '';
     const [resending, setResending] = useState(false);
     const [resendSuccess, setResendSuccess] = useState(false);
@@ -41,25 +46,115 @@ export default function EmailVerificationScreen({ navigation, route }: Props) {
         }
     };
 
+    const styles = StyleSheet.create({
+        container: {
+            flexGrow: 1,
+            backgroundColor: tokens.colors.theme.light.background,
+            padding: tokens.spacing.lg,
+            paddingTop: tokens.spacing.xxl,
+        },
+        content: {
+            alignItems: 'center',
+            maxWidth: 500,
+            width: '100%',
+            alignSelf: 'center',
+        },
+        iconContainer: {
+            width: 100,
+            height: 100,
+            borderRadius: tokens.borders.radius.full,
+            backgroundColor: `${tokens.colors.info.main}15`,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: tokens.spacing.lg,
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: getTextColor(),
+            textAlign: 'center',
+            marginBottom: tokens.spacing.sm,
+        },
+        subtitle: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+            textAlign: 'center',
+            marginBottom: tokens.spacing.xs,
+        },
+        email: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: tokens.colors.primary.main,
+            textAlign: 'center',
+            marginBottom: tokens.spacing.xl,
+        },
+        instructionTitle: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.md,
+        },
+        instructionItem: {
+            flexDirection: 'row',
+            marginBottom: tokens.spacing.sm,
+        },
+        bullet: {
+            fontSize: tokens.typography.body.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            marginRight: tokens.spacing.sm,
+            color: tokens.colors.primary.main,
+        },
+        instructionText: {
+            flex: 1,
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+            lineHeight: 22,
+        },
+        successCard: {
+            backgroundColor: `${tokens.colors.success.main}15`,
+            padding: tokens.spacing.md,
+            borderRadius: tokens.borders.radius.medium,
+            borderLeftWidth: 4,
+            borderLeftColor: tokens.colors.success.main,
+        },
+        successText: {
+            color: tokens.colors.success.main,
+            fontSize: tokens.typography.body.fontSize,
+            textAlign: 'center',
+        },
+        errorCard: {
+            backgroundColor: `${tokens.colors.error.main}15`,
+            padding: tokens.spacing.md,
+            borderRadius: tokens.borders.radius.medium,
+            borderLeftWidth: 4,
+            borderLeftColor: tokens.colors.error.main,
+        },
+        errorText: {
+            color: tokens.colors.error.main,
+            fontSize: tokens.typography.body.fontSize,
+            textAlign: 'center',
+        },
+        backLink: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+            textAlign: 'center',
+            marginTop: tokens.spacing.sm,
+        },
+    });
+
     return (
         <ScrollView contentContainerStyle={styles.container}>
             <View style={styles.content}>
                 <View style={styles.iconContainer}>
-                    <IconButton
-                        icon="email-check-outline"
-                        size={100}
-                        iconColor="#1976d2"
-                    />
+                    <Ionicons name="mail-outline" size={48} color={tokens.colors.info.main} />
                 </View>
 
-                <Title style={styles.title}>Verify Your Email</Title>
-                <Text style={styles.subtitle}>
-                    We've sent a verification link to
-                </Text>
+                <Text style={styles.title}>Verify Your Email</Text>
+                <Text style={styles.subtitle}>We've sent a verification link to</Text>
                 <Text style={styles.email}>{email}</Text>
 
-                <Card style={styles.card}>
-                    <Card.Content>
+                <Card variant="default">
+                    <View style={{ padding: tokens.spacing.md }}>
                         <Text style={styles.instructionTitle}>Next Steps:</Text>
                         <View style={styles.instructionItem}>
                             <Text style={styles.bullet}>1.</Text>
@@ -79,150 +174,45 @@ export default function EmailVerificationScreen({ navigation, route }: Props) {
                                 Return to the app and sign in
                             </Text>
                         </View>
-                    </Card.Content>
+                    </View>
                 </Card>
 
-                {resendSuccess && (
-                    <Card style={styles.successCard}>
-                        <Card.Content>
+                <Stack spacing="md" style={{ width: '100%', marginTop: tokens.spacing.lg }}>
+                    {resendSuccess && (
+                        <View style={styles.successCard}>
                             <Text style={styles.successText}>
                                 ✓ Verification email sent successfully!
                             </Text>
-                        </Card.Content>
-                    </Card>
-                )}
+                        </View>
+                    )}
 
-                {resendError && (
-                    <Card style={styles.errorCard}>
-                        <Card.Content>
+                    {resendError && (
+                        <View style={styles.errorCard}>
                             <Text style={styles.errorText}>{resendError}</Text>
-                        </Card.Content>
-                    </Card>
-                )}
+                        </View>
+                    )}
 
-                <Button
-                    mode="outlined"
-                    onPress={handleResendEmail}
-                    loading={resending}
-                    disabled={resending}
-                    style={styles.resendButton}
-                    icon="refresh"
-                >
-                    Resend Verification Email
-                </Button>
+                    <Button
+                        variant="secondary"
+                        onPress={handleResendEmail}
+                        loading={resending}
+                        disabled={resending}
+                    >
+                        Resend Verification Email
+                    </Button>
 
-                <Button
-                    mode="contained"
-                    onPress={() => navigation.navigate('SignIn')}
-                    style={styles.signInButton}
-                >
-                    Go to Sign In
-                </Button>
+                    <Button
+                        variant="primary"
+                        onPress={() => navigation.navigate('SignIn')}
+                    >
+                        Go to Sign In
+                    </Button>
 
-                <Button
-                    mode="text"
-                    onPress={() => navigation.navigate('SignUp')}
-                    style={styles.backButton}
-                >
-                    Back to Sign Up
-                </Button>
+                    <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+                        <Text style={styles.backLink}>Back to Sign Up</Text>
+                    </TouchableOpacity>
+                </Stack>
             </View>
         </ScrollView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flexGrow: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    content: {
-        padding: 20,
-        paddingTop: 40,
-        alignItems: 'center',
-    },
-    iconContainer: {
-        marginBottom: 24,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 8,
-        color: '#333',
-    },
-    subtitle: {
-        fontSize: 16,
-        textAlign: 'center',
-        color: '#666',
-        marginBottom: 4,
-    },
-    email: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        color: '#1976d2',
-        marginBottom: 24,
-    },
-    card: {
-        width: '100%',
-        marginBottom: 16,
-        backgroundColor: 'white',
-        elevation: 2,
-    },
-    instructionTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 12,
-        color: '#333',
-    },
-    instructionItem: {
-        flexDirection: 'row',
-        marginBottom: 8,
-    },
-    bullet: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        marginRight: 8,
-        color: '#1976d2',
-    },
-    instructionText: {
-        flex: 1,
-        fontSize: 14,
-        color: '#666',
-        lineHeight: 20,
-    },
-    successCard: {
-        width: '100%',
-        marginBottom: 16,
-        backgroundColor: '#e8f5e9',
-    },
-    successText: {
-        color: '#2e7d32',
-        fontSize: 14,
-        textAlign: 'center',
-    },
-    errorCard: {
-        width: '100%',
-        marginBottom: 16,
-        backgroundColor: '#ffebee',
-    },
-    errorText: {
-        color: '#c62828',
-        fontSize: 14,
-        textAlign: 'center',
-    },
-    resendButton: {
-        width: '100%',
-        marginBottom: 12,
-        paddingVertical: 4,
-    },
-    signInButton: {
-        width: '100%',
-        marginBottom: 12,
-        paddingVertical: 6,
-    },
-    backButton: {
-        marginTop: 8,
-    },
-});

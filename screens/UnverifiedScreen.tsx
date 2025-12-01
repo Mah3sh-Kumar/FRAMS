@@ -1,22 +1,100 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Title, Text, Button, Card, Surface } from 'react-native-paper';
+import { View, StyleSheet, Text } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import Button from '../components/design-system/primitives/Button';
+import Card from '../components/design-system/primitives/Card';
 import GradientBackground from '../components/GradientBackground';
 
 export default function UnverifiedScreen() {
     const { signOut, user } = useAuth();
+    const { tokens, getTextColor } = useTheme();
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: tokens.spacing.lg,
+        },
+        cardContent: {
+            padding: tokens.spacing.lg,
+        },
+        iconContainer: {
+            alignItems: 'center',
+            marginBottom: tokens.spacing.lg,
+        },
+        icon: {
+            fontSize: 64,
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: getTextColor(),
+            textAlign: 'center',
+            marginBottom: tokens.spacing.md,
+        },
+        message: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+            textAlign: 'center',
+            marginBottom: tokens.spacing.lg,
+            lineHeight: 24,
+        },
+        infoBox: {
+            backgroundColor: `${tokens.colors.info.main}15`,
+            padding: tokens.spacing.md,
+            borderRadius: tokens.borders.radius.medium,
+            marginBottom: tokens.spacing.lg,
+            borderLeftWidth: 4,
+            borderLeftColor: tokens.colors.info.main,
+        },
+        infoTitle: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: tokens.colors.info.main,
+            marginBottom: tokens.spacing.sm,
+        },
+        infoText: {
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextColor(),
+            lineHeight: 22,
+        },
+        detailsBox: {
+            backgroundColor: tokens.colors.neutral.gray100,
+            padding: tokens.spacing.md,
+            borderRadius: tokens.borders.radius.medium,
+            marginBottom: tokens.spacing.lg,
+        },
+        detailsLabel: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: tokens.colors.neutral.gray600,
+            marginBottom: tokens.spacing.xs,
+        },
+        detailsValue: {
+            fontSize: tokens.typography.body.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+        },
+        helpText: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+            textAlign: 'center',
+            marginBottom: tokens.spacing.lg,
+            fontStyle: 'italic',
+        },
+    });
 
     return (
         <GradientBackground variant="student">
             <View style={styles.container}>
-                <Surface style={styles.card} elevation={4}>
-                    <Card.Content>
+                <Card variant="elevated" style={{ width: '100%', maxWidth: 500 }}>
+                    <View style={styles.cardContent}>
                         <View style={styles.iconContainer}>
                             <Text style={styles.icon}>⏳</Text>
                         </View>
                         
-                        <Title style={styles.title}>Account Pending Verification</Title>
+                        <Text style={styles.title}>Account Pending Verification</Text>
                         
                         <Text style={styles.message}>
                             Your account has been created successfully, but it needs to be verified by an administrator before you can access the system.
@@ -42,94 +120,14 @@ export default function UnverifiedScreen() {
                         </Text>
 
                         <Button 
-                            mode="contained" 
+                            variant="primary"
                             onPress={signOut}
-                            style={styles.button}
                         >
                             Sign Out
                         </Button>
-                    </Card.Content>
-                </Surface>
+                    </View>
+                </Card>
             </View>
         </GradientBackground>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    card: {
-        width: '100%',
-        maxWidth: 500,
-        borderRadius: 16,
-        backgroundColor: 'white',
-    },
-    iconContainer: {
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    icon: {
-        fontSize: 64,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 16,
-        color: '#333',
-    },
-    message: {
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 24,
-        color: '#666',
-        lineHeight: 24,
-    },
-    infoBox: {
-        backgroundColor: '#e3f2fd',
-        padding: 16,
-        borderRadius: 8,
-        marginBottom: 20,
-    },
-    infoTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        color: '#1976d2',
-    },
-    infoText: {
-        fontSize: 14,
-        color: '#555',
-        lineHeight: 22,
-    },
-    detailsBox: {
-        backgroundColor: '#f5f5f5',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 20,
-    },
-    detailsLabel: {
-        fontSize: 12,
-        color: '#888',
-        marginBottom: 4,
-    },
-    detailsValue: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
-    },
-    helpText: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#888',
-        marginBottom: 24,
-        fontStyle: 'italic',
-    },
-    button: {
-        marginTop: 8,
-    },
-});

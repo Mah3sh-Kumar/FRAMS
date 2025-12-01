@@ -1,19 +1,22 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Title, Card, Paragraph, IconButton } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import AnimatedCard from '../../components/AnimatedCard';
-import GradientBackground from '../../components/GradientBackground';
-import { colors, spacing, typography } from '../../lib/theme';
 import { useAuth } from '../../context/AuthContext';
 import { fetchStudentAttendanceStats, fetchStudentPendingAssignments } from '../../lib/database';
-import { useState, useEffect } from 'react';
+import { useTheme } from '../../lib/design-system/ThemeContext';
+import Card from '../../components/design-system/primitives/Card';
+import { Stack, Row } from '../../components/design-system/layout';
+import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
+import GradientBackground from '../../components/GradientBackground';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function StudentDashboard() {
     const navigation = useNavigation();
     const { session } = useAuth();
+    const { tokens, getTextColor, getSurfaceColor, getRoleColor } = useTheme();
     const [stats, setStats] = useState({ attendanceRate: 0, pendingAssignments: 0 });
     const [loading, setLoading] = useState(true);
+    const roleColor = getRoleColor();
 
     useEffect(() => {
         loadStats();
@@ -43,156 +46,168 @@ export default function StudentDashboard() {
         {
             title: 'Attendance',
             description: 'View your attendance record',
-            icon: 'clipboard-check-outline',
-            color: colors.info.main,
+            icon: 'calendar-outline' as const,
+            color: tokens.colors.info.main,
             route: 'Attendance',
         },
         {
             title: 'Assignments',
             description: 'Check pending assignments',
-            icon: 'book-open-variant',
-            color: colors.warning.main,
+            icon: 'book-outline' as const,
+            color: tokens.colors.warning.main,
             route: 'Assignments',
         },
     ];
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        header: {
+            padding: tokens.spacing.lg,
+            paddingTop: tokens.spacing.xl,
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: tokens.colors.neutral.white,
+            marginBottom: tokens.spacing.xs,
+        },
+        subtitle: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.white,
+            opacity: 0.9,
+        },
+        featureCard: {
+            marginBottom: 0,
+        },
+        cardContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: tokens.spacing.md,
+        },
+        iconContainer: {
+            width: tokens.spacing.xxl,
+            height: tokens.spacing.xxl,
+            borderRadius: tokens.borders.radius.medium,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: tokens.spacing.md,
+        },
+        textContainer: {
+            flex: 1,
+        },
+        featureTitle: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.xs / 2,
+        },
+        featureDescription: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: tokens.colors.neutral.gray600,
+        },
+        statCard: {
+            flex: 1,
+        },
+        statContent: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: tokens.spacing.md,
+            gap: tokens.spacing.sm,
+        },
+        statIconContainer: {
+            width: tokens.spacing.xl + tokens.spacing.sm,
+            height: tokens.spacing.xl + tokens.spacing.sm,
+            borderRadius: tokens.borders.radius.medium,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        statValue: {
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+            color: getTextColor(),
+        },
+        statLabel: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: tokens.colors.neutral.gray600,
+        },
+    });
+
+    if (loading) {
+        return (
+            <GradientBackground variant="student">
+                <View style={styles.loadingContainer}>
+                    <LoadingSpinner size="large" />
+                </View>
+            </GradientBackground>
+        );
+    }
 
     return (
         <GradientBackground variant="student">
             <ScrollView style={styles.container}>
                 <View style={styles.header}>
-                    <Title style={styles.title}>Student Dashboard</Title>
-                    <Paragraph style={styles.subtitle}>Welcome back! Here's your overview</Paragraph>
+                    <Text style={styles.title}>Student Dashboard</Text>
+                    <Text style={styles.subtitle}>Welcome back! Here's your overview</Text>
                 </View>
 
-                <View style={styles.cardsContainer}>
+                <Stack spacing="md" style={{ padding: tokens.spacing.md }}>
                     {features.map((feature, index) => (
-                        <AnimatedCard
+                        <TouchableOpacity
                             key={index}
                             onPress={() => navigation.navigate(feature.route as never)}
-                            style={styles.featureCard}
-                            glassmorphism
+                            activeOpacity={0.7}
                         >
-                            <Card.Content style={styles.cardContent}>
-                                <View style={styles.iconContainer}>
-                                    <IconButton
-                                        icon={feature.icon}
-                                        size={32}
-                                        iconColor={feature.color}
-                                    />
+                            <Card variant="glassmorphic" style={styles.featureCard}>
+                                <View style={styles.cardContent}>
+                                    <View style={[styles.iconContainer, { backgroundColor: `${feature.color}20` }]}>
+                                        <Ionicons name={feature.icon} size={24} color={feature.color} />
+                                    </View>
+                                    <View style={styles.textContainer}>
+                                        <Text style={styles.featureTitle}>{feature.title}</Text>
+                                        <Text style={styles.featureDescription}>{feature.description}</Text>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={20} color={tokens.colors.neutral.gray400} />
                                 </View>
-                                <View style={styles.textContainer}>
-                                    <Title style={styles.featureTitle}>{feature.title}</Title>
-                                    <Paragraph style={styles.featureDescription}>
-                                        {feature.description}
-                                    </Paragraph>
-                                </View>
-                                <IconButton
-                                    icon="chevron-right"
-                                    size={24}
-                                    iconColor={colors.text.secondary}
-                                />
-                            </Card.Content>
-                        </AnimatedCard>
+                            </Card>
+                        </TouchableOpacity>
                     ))}
-                </View>
 
-                {/* Quick Stats Section */}
-                <View style={styles.statsContainer}>
-                    <AnimatedCard glassmorphism style={styles.statCard}>
-                        <Card.Content style={styles.statContent}>
-                            <IconButton icon="calendar-check" size={28} iconColor={colors.success.main} />
-                            <View>
-                                <Title style={styles.statValue}>
-                                    {loading ? '...' : `${stats.attendanceRate}%`}
-                                </Title>
-                                <Paragraph style={styles.statLabel}>Attendance Rate</Paragraph>
+                    <Row spacing="md">
+                        <Card variant="glassmorphic" style={styles.statCard}>
+                            <View style={styles.statContent}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.success.main}20` }]}>
+                                    <Ionicons name="checkmark-circle" size={24} color={tokens.colors.success.main} />
+                                </View>
+                                <View>
+                                    <Text style={styles.statValue}>{stats.attendanceRate}%</Text>
+                                    <Text style={styles.statLabel}>Attendance</Text>
+                                </View>
                             </View>
-                        </Card.Content>
-                    </AnimatedCard>
+                        </Card>
 
-                    <AnimatedCard glassmorphism style={styles.statCard}>
-                        <Card.Content style={styles.statContent}>
-                            <IconButton icon="file-document-outline" size={28} iconColor={colors.info.main} />
-                            <View>
-                                <Title style={styles.statValue}>
-                                    {loading ? '...' : stats.pendingAssignments}
-                                </Title>
-                                <Paragraph style={styles.statLabel}>Pending Tasks</Paragraph>
+                        <Card variant="glassmorphic" style={styles.statCard}>
+                            <View style={styles.statContent}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.info.main}20` }]}>
+                                    <Ionicons name="document-text" size={24} color={tokens.colors.info.main} />
+                                </View>
+                                <View>
+                                    <Text style={styles.statValue}>{stats.pendingAssignments}</Text>
+                                    <Text style={styles.statLabel}>Pending</Text>
+                                </View>
                             </View>
-                        </Card.Content>
-                    </AnimatedCard>
-                </View>
+                        </Card>
+                    </Row>
+                </Stack>
             </ScrollView>
         </GradientBackground>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        padding: spacing.lg,
-        paddingTop: spacing.xl,
-    },
-    title: {
-        fontSize: typography.fontSize.xxxl,
-        fontWeight: typography.fontWeight.bold,
-        color: colors.text.inverse,
-        marginBottom: spacing.xs,
-    },
-    subtitle: {
-        fontSize: typography.fontSize.md,
-        color: 'rgba(255, 255, 255, 0.9)',
-    },
-    cardsContainer: {
-        padding: spacing.md,
-        gap: spacing.sm,
-    },
-    featureCard: {
-        marginBottom: spacing.sm,
-    },
-    cardContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: spacing.md,
-    },
-    iconContainer: {
-        marginRight: spacing.sm,
-    },
-    textContainer: {
-        flex: 1,
-    },
-    featureTitle: {
-        fontSize: typography.fontSize.lg,
-        fontWeight: typography.fontWeight.semibold,
-        color: colors.text.primary,
-        marginBottom: spacing.xs / 2,
-    },
-    featureDescription: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        padding: spacing.md,
-        gap: spacing.sm,
-    },
-    statCard: {
-        flex: 1,
-    },
-    statContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    statValue: {
-        fontSize: typography.fontSize.xl,
-        fontWeight: typography.fontWeight.bold,
-        color: colors.text.primary,
-    },
-    statLabel: {
-        fontSize: typography.fontSize.xs,
-        color: colors.text.secondary,
-    },
-});
+

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, ScrollView, Alert } from 'react-native';
-import { Title, Card, Text, Chip, IconButton, SegmentedButtons, Button, Surface, Searchbar } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, RefreshControl, Alert, Text, TouchableOpacity, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import AnimatedCard from '../../components/AnimatedCard';
+import { useTheme } from '../../lib/design-system/ThemeContext';
+import Card from '../../components/design-system/primitives/Card';
+import Button from '../../components/design-system/primitives/Button';
+import Input from '../../components/design-system/primitives/Input';
+import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
+import { Stack, Row } from '../../components/design-system/layout';
 import EmptyState from '../../components/EmptyState';
 import CountdownTimer from '../../components/CountdownTimer';
-import { colors, spacing, typography } from '../../lib/theme';
 
 type Assignment = {
     id: string;
@@ -28,6 +31,7 @@ type Assignment = {
 };
 
 export default function AssignmentScreen() {
+    const { tokens, getTextColor, getSurfaceColor } = useTheme();
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -74,19 +78,19 @@ export default function AssignmentScreen() {
 
     function getStatusColor(status: string) {
         switch (status) {
-            case 'pending': return colors.warning.main;
-            case 'submitted': return colors.info.main;
-            case 'graded': return colors.success.main;
-            default: return colors.text.secondary;
+            case 'pending': return tokens.colors.warning.main;
+            case 'submitted': return tokens.colors.info.main;
+            case 'graded': return tokens.colors.success.main;
+            default: return tokens.colors.neutral.gray600;
         }
     }
 
     function getStatusIcon(status: string) {
         switch (status) {
-            case 'pending': return 'clock-outline';
-            case 'submitted': return 'file-check';
-            case 'graded': return 'check-circle';
-            default: return 'information';
+            case 'pending': return 'time-outline';
+            case 'submitted': return 'document-text';
+            case 'graded': return 'checkmark-circle';
+            default: return 'information-circle';
         }
     }
 
@@ -111,7 +115,174 @@ export default function AssignmentScreen() {
         return matchesStatus && matchesSearch;
     });
 
-    if (loading) return <LoadingSpinner text="Loading assignments..." />;
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: tokens.colors.theme.light.background,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: tokens.colors.theme.light.background,
+        },
+        header: {
+            padding: tokens.spacing.lg,
+            paddingTop: tokens.spacing.xl,
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.xs,
+        },
+        subtitle: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+        },
+        statCard: {
+            flex: 1,
+        },
+        statContent: {
+            padding: tokens.spacing.md,
+            alignItems: 'center',
+        },
+        statIconContainer: {
+            width: tokens.spacing.xl + tokens.spacing.sm,
+            height: tokens.spacing.xl + tokens.spacing.sm,
+            borderRadius: tokens.borders.radius.medium,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: tokens.spacing.sm,
+        },
+        statValue: {
+            fontSize: tokens.typography.h2.fontSize,
+            fontWeight: tokens.typography.h2.fontWeight,
+            color: getTextColor(),
+        },
+        statLabel: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: tokens.colors.neutral.gray600,
+            marginTop: tokens.spacing.xs / 2,
+        },
+        searchInput: {
+            backgroundColor: getSurfaceColor(),
+            borderRadius: tokens.borders.radius.medium,
+            borderWidth: tokens.borders.width.thin,
+            borderColor: tokens.colors.neutral.gray300,
+            paddingHorizontal: tokens.spacing.md,
+            paddingVertical: tokens.spacing.sm,
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextColor(),
+        },
+        filterButton: {
+            flex: 1,
+            paddingVertical: tokens.spacing.sm,
+            paddingHorizontal: tokens.spacing.xs,
+            borderRadius: tokens.borders.radius.medium,
+            borderWidth: tokens.borders.width.medium,
+            borderColor: tokens.colors.neutral.gray300,
+            backgroundColor: getSurfaceColor(),
+            alignItems: 'center',
+        },
+        filterButtonActive: {
+            borderColor: tokens.colors.primary.main,
+            backgroundColor: tokens.colors.primary.light,
+        },
+        filterButtonText: {
+            fontSize: tokens.typography.caption.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: tokens.colors.neutral.gray600,
+        },
+        filterButtonTextActive: {
+            color: tokens.colors.primary.main,
+        },
+        assignmentCard: {
+            marginBottom: 0,
+        },
+        cardContent: {
+            padding: tokens.spacing.md,
+        },
+        cardHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: tokens.spacing.sm,
+        },
+        cardTitleContainer: {
+            flex: 1,
+            marginRight: tokens.spacing.sm,
+        },
+        assignmentTitle: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.xs / 2,
+        },
+        subjectName: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: tokens.colors.neutral.gray600,
+        },
+        statusBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: tokens.spacing.xs / 2,
+            paddingHorizontal: tokens.spacing.sm,
+            borderRadius: tokens.borders.radius.small,
+            gap: tokens.spacing.xs / 2,
+        },
+        statusText: {
+            fontSize: tokens.typography.caption.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+        },
+        description: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+            marginBottom: tokens.spacing.sm,
+            lineHeight: 20,
+        },
+        cardFooter: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: tokens.spacing.sm,
+        },
+        dueDateContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: tokens.spacing.xs,
+        },
+        dueDate: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: tokens.colors.neutral.gray600,
+        },
+        overdueText: {
+            color: tokens.colors.error.main,
+            fontWeight: tokens.typography.h3.fontWeight,
+        },
+        scoreBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: tokens.spacing.xs / 2,
+            paddingHorizontal: tokens.spacing.sm,
+            borderRadius: tokens.borders.radius.small,
+            backgroundColor: tokens.colors.success.light,
+            gap: tokens.spacing.xs / 2,
+        },
+        scoreText: {
+            fontSize: tokens.typography.caption.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: tokens.colors.success.main,
+        },
+    });
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <LoadingSpinner size="large" />
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -119,68 +290,82 @@ export default function AssignmentScreen() {
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
+                keyboardShouldPersistTaps="always"
+                showsVerticalScrollIndicator={false}
             >
-                {/* Header */}
                 <View style={styles.header}>
-                    <Title style={styles.title}>My Assignments</Title>
+                    <Text style={styles.title}>My Assignments</Text>
                     <Text style={styles.subtitle}>Track your coursework</Text>
                 </View>
 
-                {/* Stats Cards */}
-                <View style={styles.statsContainer}>
-                    <Surface style={[styles.statCard, { backgroundColor: colors.warning.main + '20' }]}>
-                        <IconButton icon="clock-outline" size={28} iconColor={colors.warning.main} />
-                        <Title style={styles.statValue}>{stats.pending}</Title>
-                        <Text style={styles.statLabel}>Pending</Text>
-                    </Surface>
+                <Stack spacing="md" style={{ paddingHorizontal: tokens.spacing.md }}>
+                    <Row spacing="sm">
+                        <Card variant="glassmorphic" style={styles.statCard}>
+                            <View style={styles.statContent}>
+                                <View style={[styles.statIconContainer, { backgroundColor: tokens.colors.warning.light }]}>
+                                    <Ionicons name="time-outline" size={20} color={tokens.colors.warning.main} />
+                                </View>
+                                <Text style={styles.statValue}>{stats.pending}</Text>
+                                <Text style={styles.statLabel}>Pending</Text>
+                            </View>
+                        </Card>
 
-                    <Surface style={[styles.statCard, { backgroundColor: colors.info.main + '20' }]}>
-                        <IconButton icon="file-check" size={28} iconColor={colors.info.main} />
-                        <Title style={styles.statValue}>{stats.submitted}</Title>
-                        <Text style={styles.statLabel}>Submitted</Text>
-                    </Surface>
+                        <Card variant="glassmorphic" style={styles.statCard}>
+                            <View style={styles.statContent}>
+                                <View style={[styles.statIconContainer, { backgroundColor: tokens.colors.info.light }]}>
+                                    <Ionicons name="document-text" size={20} color={tokens.colors.info.main} />
+                                </View>
+                                <Text style={styles.statValue}>{stats.submitted}</Text>
+                                <Text style={styles.statLabel}>Submitted</Text>
+                            </View>
+                        </Card>
 
-                    <Surface style={[styles.statCard, { backgroundColor: colors.success.main + '20' }]}>
-                        <IconButton icon="check-circle" size={28} iconColor={colors.success.main} />
-                        <Title style={styles.statValue}>{stats.graded}</Title>
-                        <Text style={styles.statLabel}>Graded</Text>
-                    </Surface>
+                        <Card variant="glassmorphic" style={styles.statCard}>
+                            <View style={styles.statContent}>
+                                <View style={[styles.statIconContainer, { backgroundColor: tokens.colors.success.light }]}>
+                                    <Ionicons name="checkmark-circle" size={20} color={tokens.colors.success.main} />
+                                </View>
+                                <Text style={styles.statValue}>{stats.graded}</Text>
+                                <Text style={styles.statLabel}>Graded</Text>
+                            </View>
+                        </Card>
 
-                    <Surface style={[styles.statCard, { backgroundColor: colors.primary.main + '20' }]}>
-                        <IconButton icon="star" size={28} iconColor={colors.primary.main} />
-                        <Title style={styles.statValue}>{stats.avgScore.toFixed(0)}</Title>
-                        <Text style={styles.statLabel}>Avg Score</Text>
-                    </Surface>
-                </View>
+                        <Card variant="glassmorphic" style={styles.statCard}>
+                            <View style={styles.statContent}>
+                                <View style={[styles.statIconContainer, { backgroundColor: tokens.colors.primary.light }]}>
+                                    <Ionicons name="star" size={20} color={tokens.colors.primary.main} />
+                                </View>
+                                <Text style={styles.statValue}>{stats.avgScore.toFixed(0)}</Text>
+                                <Text style={styles.statLabel}>Avg Score</Text>
+                            </View>
+                        </Card>
+                    </Row>
 
-                {/* Search */}
-                <View style={styles.searchContainer}>
-                    <Searchbar
+                    <TextInput
+                        style={styles.searchInput}
                         placeholder="Search assignments..."
-                        onChangeText={setSearchQuery}
+                        placeholderTextColor={tokens.colors.neutral.gray400}
                         value={searchQuery}
-                        style={styles.searchBar}
-                        iconColor={colors.primary.main}
+                        onChangeText={setSearchQuery}
                     />
-                </View>
 
-                {/* Filter */}
-                <View style={styles.filterContainer}>
-                    <SegmentedButtons
-                        value={filterStatus}
-                        onValueChange={setFilterStatus}
-                        buttons={[
-                            { value: 'all', label: 'All' },
-                            { value: 'pending', label: 'Pending', icon: 'clock' },
-                            { value: 'submitted', label: 'Submitted', icon: 'file-check' },
-                            { value: 'graded', label: 'Graded', icon: 'check' },
-                        ]}
-                        style={styles.segmentedButtons}
-                    />
-                </View>
+                    <Row spacing="sm">
+                        {['all', 'pending', 'submitted', 'graded'].map((status) => (
+                            <TouchableOpacity
+                                key={status}
+                                style={[styles.filterButton, filterStatus === status && styles.filterButtonActive]}
+                                onPress={() => setFilterStatus(status)}
+                                accessible
+                                accessibilityRole="button"
+                                accessibilityState={{ selected: filterStatus === status }}
+                            >
+                                <Text style={[styles.filterButtonText, filterStatus === status && styles.filterButtonTextActive]}>
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </Row>
 
-                {/* Assignments List */}
-                <View style={styles.listContainer}>
                     {filteredAssignments.length === 0 ? (
                         <EmptyState
                             icon="book-open-variant"
@@ -189,213 +374,85 @@ export default function AssignmentScreen() {
                                     `No ${filterStatus} assignments`}
                         />
                     ) : (
-                        filteredAssignments.map((item) => {
-                            const assignment = item.assignments;
-                            if (!assignment) return null;
+                        <Stack spacing="md">
+                            {filteredAssignments.map((item) => {
+                                const assignment = item.assignments;
+                                if (!assignment) return null;
 
-                            const overdue = isOverdue(assignment.due_date, item.status);
+                                const overdue = isOverdue(assignment.due_date, item.status);
 
-                            return (
-                                <AnimatedCard key={item.id} style={styles.card}>
-                                    <Card.Content>
-                                        <View style={styles.cardHeader}>
-                                            <View style={styles.cardTitleContainer}>
-                                                <Text style={styles.assignmentTitle}>{assignment.title}</Text>
-                                                <Text style={styles.subjectName}>
-                                                    {assignment.subjects?.name || 'Unknown Subject'}
-                                                </Text>
+                                return (
+                                    <Card key={item.id} variant="default" style={styles.assignmentCard}>
+                                        <View style={styles.cardContent}>
+                                            <View style={styles.cardHeader}>
+                                                <View style={styles.cardTitleContainer}>
+                                                    <Text style={styles.assignmentTitle}>{assignment.title}</Text>
+                                                    <Text style={styles.subjectName}>
+                                                        {assignment.subjects?.name || 'Unknown Subject'}
+                                                    </Text>
+                                                </View>
+                                                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                                                    <Ionicons name={getStatusIcon(item.status)} size={14} color={getStatusColor(item.status)} />
+                                                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                                                        {item.status.toUpperCase()}
+                                                    </Text>
+                                                </View>
                                             </View>
-                                            <Chip
-                                                icon={getStatusIcon(item.status)}
-                                                style={[styles.statusChip, { backgroundColor: getStatusColor(item.status) + '20' }]}
-                                                textStyle={{ color: getStatusColor(item.status), fontWeight: '600', fontSize: 11 }}
-                                                compact
-                                            >
-                                                {item.status.toUpperCase()}
-                                            </Chip>
-                                        </View>
 
-                                        {assignment.description && (
-                                            <Text style={styles.description} numberOfLines={2}>
-                                                {assignment.description}
-                                            </Text>
-                                        )}
+                                            {assignment.description && (
+                                                <Text style={styles.description} numberOfLines={2}>
+                                                    {assignment.description}
+                                                </Text>
+                                            )}
 
-                                        <View style={styles.cardFooter}>
-                                            <View style={styles.dueDateContainer}>
-                                                {item.status === 'pending' && !overdue ? (
-                                                    <CountdownTimer dueDate={assignment.due_date} />
-                                                ) : (
-                                                    <>
-                                                        <IconButton
-                                                            icon={overdue ? "alert-circle" : "calendar"}
-                                                            size={16}
-                                                            iconColor={overdue ? colors.error.main : colors.text.secondary}
-                                                            style={styles.iconButton}
-                                                        />
-                                                        <Text style={[
-                                                            styles.dueDate,
-                                                            overdue && styles.overdueText
-                                                        ]}>
-                                                            {overdue ? 'Overdue' : 'Completed'}
+                                            <View style={styles.cardFooter}>
+                                                <View style={styles.dueDateContainer}>
+                                                    {item.status === 'pending' && !overdue ? (
+                                                        <CountdownTimer dueDate={assignment.due_date} />
+                                                    ) : (
+                                                        <>
+                                                            <Ionicons
+                                                                name={overdue ? "alert-circle" : "calendar"}
+                                                                size={16}
+                                                                color={overdue ? tokens.colors.error.main : tokens.colors.neutral.gray600}
+                                                            />
+                                                            <Text style={[
+                                                                styles.dueDate,
+                                                                overdue && styles.overdueText
+                                                            ]}>
+                                                                {overdue ? 'Overdue' : 'Completed'}
+                                                            </Text>
+                                                        </>
+                                                    )}
+                                                </View>
+
+                                                {item.status === 'graded' && item.score !== null && (
+                                                    <View style={styles.scoreBadge}>
+                                                        <Ionicons name="star" size={14} color={tokens.colors.success.main} />
+                                                        <Text style={styles.scoreText}>
+                                                            {item.score}/{assignment.max_score}
                                                         </Text>
-                                                    </>
+                                                    </View>
+                                                )}
+
+                                                {item.status === 'pending' && (
+                                                    <Button
+                                                        variant="primary"
+                                                        size="small"
+                                                        onPress={() => Alert.alert('Submit', 'Submission interface coming soon!')}
+                                                    >
+                                                        Submit
+                                                    </Button>
                                                 )}
                                             </View>
-
-                                            {item.status === 'graded' && item.score !== null && (
-                                                <Chip
-                                                    icon="star"
-                                                    style={[styles.scoreChip, { backgroundColor: colors.success.light + '30' }]}
-                                                    textStyle={{ color: colors.success.dark, fontWeight: '700' }}
-                                                >
-                                                    {item.score}/{assignment.max_score}
-                                                </Chip>
-                                            )}
-
-                                            {item.status === 'pending' && (
-                                                <Button
-                                                    mode="contained"
-                                                    compact
-                                                    onPress={() => Alert.alert('Submit', 'Submission interface coming soon!')}
-                                                    buttonColor={colors.primary.main}
-                                                    icon="upload"
-                                                    style={styles.submitButton}
-                                                >
-                                                    Submit
-                                                </Button>
-                                            )}
                                         </View>
-                                    </Card.Content>
-                                </AnimatedCard>
-                            );
-                        })
+                                    </Card>
+                                );
+                            })}
+                        </Stack>
                     )}
-                </View>
+                </Stack>
             </ScrollView>
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background.default,
-    },
-    header: {
-        padding: spacing.lg,
-        paddingTop: spacing.xl,
-    },
-    title: {
-        fontSize: typography.fontSize.xxxl,
-        fontWeight: typography.fontWeight.bold,
-        color: colors.text.primary,
-        marginBottom: spacing.xs,
-    },
-    subtitle: {
-        fontSize: typography.fontSize.md,
-        color: colors.text.secondary,
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: spacing.md,
-        gap: spacing.sm,
-        marginBottom: spacing.md,
-    },
-    statCard: {
-        flex: 1,
-        padding: spacing.sm,
-        borderRadius: 12,
-        alignItems: 'center',
-        elevation: 2,
-    },
-    statValue: {
-        fontSize: typography.fontSize.lg,
-        fontWeight: typography.fontWeight.bold,
-        color: colors.text.primary,
-        marginTop: -spacing.xs,
-    },
-    statLabel: {
-        fontSize: typography.fontSize.xs,
-        color: colors.text.secondary,
-        marginTop: spacing.xs / 2,
-    },
-    searchContainer: {
-        paddingHorizontal: spacing.md,
-        marginBottom: spacing.md,
-    },
-    searchBar: {
-        elevation: 2,
-    },
-    filterContainer: {
-        paddingHorizontal: spacing.md,
-        marginBottom: spacing.md,
-    },
-    segmentedButtons: {
-        borderRadius: 8,
-    },
-    listContainer: {
-        paddingHorizontal: spacing.md,
-        paddingBottom: spacing.xl,
-    },
-    card: {
-        marginBottom: spacing.md,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: spacing.sm,
-    },
-    cardTitleContainer: {
-        flex: 1,
-        marginRight: spacing.sm,
-    },
-    assignmentTitle: {
-        fontSize: typography.fontSize.lg,
-        fontWeight: typography.fontWeight.bold,
-        color: colors.text.primary,
-        marginBottom: spacing.xs / 2,
-    },
-    subjectName: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-    },
-    statusChip: {
-        height: 28,
-    },
-    description: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-        marginBottom: spacing.sm,
-        lineHeight: 20,
-    },
-    cardFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: spacing.xs,
-    },
-    dueDateContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    iconButton: {
-        margin: 0,
-        marginRight: -8,
-    },
-    dueDate: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-    },
-    overdueText: {
-        color: colors.error.main,
-        fontWeight: typography.fontWeight.semibold,
-    },
-    scoreChip: {
-        height: 28,
-    },
-    submitButton: {
-        borderRadius: 8,
-    },
-});

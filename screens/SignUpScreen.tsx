@@ -1,23 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { TextInput, Button, Text, Title, HelperText, SegmentedButtons, ActivityIndicator, Banner } from 'react-native-paper';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, Text, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth, SignUpPayload } from '../context/AuthContext';
-import { fetchClasses, checkEnrollmentNumberUnique } from '../lib/database';
+import { checkEnrollmentNumberUnique } from '../lib/database';
 import { DEPARTMENTS, CLASS_LEVELS, BRANCHES } from '../lib/constants';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import type { StackScreenProps } from '@react-navigation/stack';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import Button from '../components/design-system/primitives/Button';
+import Input from '../components/design-system/primitives/Input';
+import { Stack } from '../components/design-system/layout';
+import { isValidEmail } from '../lib/validation';
 
 type Props = StackScreenProps<any, 'SignUp'>;
 
-interface Class {
-    id: string;
-    name: string;
-    academic_year: string;
-}
-
 export default function SignUpScreen({ navigation }: Props) {
     const { signUp, loading: authLoading } = useAuth();
+    const { getTextColor, getSurfaceColor } = useTheme();
 
     // Form state
     const [role, setRole] = useState<'student' | 'teacher'>('student');
@@ -32,9 +31,6 @@ export default function SignUpScreen({ navigation }: Props) {
     const [enrollmentNumber, setEnrollmentNumber] = useState('');
     const [classLevel, setClassLevel] = useState(CLASS_LEVELS[0].value);
     const [branch, setBranch] = useState(BRANCHES[0]);
-    const [classes, setClasses] = useState<Class[]>([]);
-    const [loadingClasses, setLoadingClasses] = useState(false);
-    const [classesError, setClassesError] = useState('');
 
     // Teacher-specific
     const [department, setDepartment] = useState(DEPARTMENTS[0]);
@@ -42,15 +38,37 @@ export default function SignUpScreen({ navigation }: Props) {
     // UI state
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showEmailVerificationBanner, setShowEmailVerificationBanner] = useState(false);
-    const [verificationEmail, setVerificationEmail] = useState('');
 
-    // No need to load classes from database anymore - using predefined CLASS_LEVELS
+    // Debounce timer ref for enrollment number validation
+    const enrollmentCheckTimer = useRef<NodeJS.Timeout | null>(null);
 
-    // Validation
-    const isValidEmail = (email: string) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    };
+    // Debounced enrollment number validation
+    const checkEnrollmentDebounced = useCallback((value: string) => {
+        if (enrollmentCheckTimer.current) {
+            clearTimeout(enrollmentCheckTimer.current);
+        }
+
+        enrollmentCheckTimer.current = setTimeout(async () => {
+            if (value.trim() && role === 'student') {
+                const isUnique = await checkEnrollmentNumberUnique(value);
+                if (!isUnique) {
+                    setErrors(prev => ({
+                        ...prev,
+                        enrollmentNumber: 'This enrollment number is already registered'
+                    }));
+                }
+            }
+        }, 500); // 500ms debounce
+    }, [role]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (enrollmentCheckTimer.current) {
+                clearTimeout(enrollmentCheckTimer.current);
+            }
+        };
+    }, []);
 
     const validateForm = async (): Promise<boolean> => {
         const newErrors: Record<string, string> = {};
@@ -81,7 +99,6 @@ export default function SignUpScreen({ navigation }: Props) {
             if (!enrollmentNumber.trim()) {
                 newErrors.enrollmentNumber = 'Enrollment number is required';
             } else {
-                // Check uniqueness
                 const isUnique = await checkEnrollmentNumberUnique(enrollmentNumber);
                 if (!isUnique) {
                     newErrors.enrollmentNumber = 'This enrollment number is already registered';
@@ -101,16 +118,10 @@ export default function SignUpScreen({ navigation }: Props) {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSignUp = async () => {
-        console.log('🔵 handleSignUp started');
-        console.log('🔵 Current role:', role);
-        console.log('🔵 Department:', department);
-
+    const handleSignUp = useCallback(async () => {
         try {
             const isValid = await validateForm();
-            console.log('🔵 Form validation result:', isValid);
             if (!isValid) {
-                console.log('❌ Form validation failed');
                 return;
             }
 
@@ -129,240 +140,200 @@ export default function SignUpScreen({ navigation }: Props) {
                 if (classLevel.startsWith('grad_year')) {
                     payload.branch = branch.trim();
                 }
-                console.log('🔵 Student payload:', { ...payload, password: '***' });
             } else if (role === 'teacher') {
                 payload.department = department;
-                console.log('🔵 Teacher payload:', { ...payload, password: '***' });
             }
 
-            console.log('🔵 Calling signUp function...');
-            const { error, requiresEmailVerification } = await signUp(payload);
-            console.log('🔵 signUp completed, error:', error, 'requiresEmailVerification:', requiresEmailVerification);
+            const { error } = await signUp(payload);
 
             if (error) {
-                console.log('❌ Signup error:', error);
                 Alert.alert('Signup Failed', error);
-                setIsSubmitting(false);
-            } else if (requiresEmailVerification) {
-                console.log('✅ Signup successful! Email verification required.');
-                setIsSubmitting(false);
-                // Navigate to email verification screen
-                navigation.navigate('EmailVerification', { email: payload.email });
             } else {
-                console.log('✅ Signup successful!');
                 Alert.alert('Success', 'Account created successfully!');
-                setIsSubmitting(false);
             }
         } catch (err: any) {
-            console.error('❌ CRASH in handleSignUp:', err);
-            console.error('❌ Error message:', err.message);
-            console.error('❌ Error stack:', err.stack);
-            setIsSubmitting(false);
+            console.error('Error in handleSignUp:', err);
             Alert.alert('Error', `An unexpected error occurred: ${err.message || 'Unknown error'}`);
+        } finally {
+            setIsSubmitting(false);
         }
-    };
+    }, [role, fullName, email, password, enrollmentNumber, classLevel, branch, department, signUp, navigation]);
 
-    const isFormValid = () => {
+    const isFormValid = useCallback(() => {
         if (!fullName || !email || !password || !confirmPassword) return false;
         if (password !== confirmPassword) return false;
         if (role === 'student' && !enrollmentNumber) return false;
         if (role === 'student' && classLevel.startsWith('grad_year') && !branch) return false;
         if (role === 'teacher' && !department) return false;
         return true;
-    };
+    }, [fullName, email, password, confirmPassword, role, enrollmentNumber, classLevel, branch, department]);
+
+    // Memoized handlers to prevent re-renders
+    const handleFullNameChange = useCallback((text: string) => {
+        setFullName(text);
+        if (errors.fullName) {
+            setErrors(prev => ({ ...prev, fullName: '' }));
+        }
+    }, [errors.fullName]);
+
+    const handleEmailChange = useCallback((text: string) => {
+        setEmail(text);
+        if (errors.email) {
+            setErrors(prev => ({ ...prev, email: '' }));
+        }
+    }, [errors.email]);
+
+    const handlePasswordChange = useCallback((text: string) => {
+        setPassword(text);
+        if (errors.password) {
+            setErrors(prev => ({ ...prev, password: '' }));
+        }
+    }, [errors.password]);
+
+    const handleConfirmPasswordChange = useCallback((text: string) => {
+        setConfirmPassword(text);
+        if (errors.confirmPassword) {
+            setErrors(prev => ({ ...prev, confirmPassword: '' }));
+        }
+    }, [errors.confirmPassword]);
+
+    const handleEnrollmentChange = useCallback((text: string) => {
+        setEnrollmentNumber(text);
+        if (errors.enrollmentNumber) {
+            setErrors(prev => ({ ...prev, enrollmentNumber: '' }));
+        }
+        // Trigger debounced validation
+        checkEnrollmentDebounced(text);
+    }, [errors.enrollmentNumber, checkEnrollmentDebounced]);
 
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
+                showsVerticalScrollIndicator={false}
             >
                 <View style={styles.content}>
-                    <Title style={styles.title}>Create Account</Title>
+                    <Text style={[styles.title, { color: getTextColor() }]}>Create Account</Text>
                     <Text style={styles.subtitle}>Sign up to get started</Text>
 
-                    {/* Email Verification Banner */}
-                    {showEmailVerificationBanner && (
-                        <Banner
-                            visible={showEmailVerificationBanner}
-                            actions={[
-                                {
-                                    label: 'Got it',
-                                    onPress: () => setShowEmailVerificationBanner(false),
-                                },
-                            ]}
-                            icon="email-check-outline"
-                            style={styles.verificationBanner}
-                        >
-                            <Text style={styles.bannerText}>
-                                <Text style={styles.bannerTitle}>Verify your email{'\n'}</Text>
-                                We've sent a verification link to {verificationEmail}. Please check your inbox and click the link to activate your account.
-                            </Text>
-                        </Banner>
-                    )}
-
-                    <View style={styles.form}>
+                    <Stack spacing="md">
                         {/* Role Selection */}
-                        <Text style={styles.label}>I am a:</Text>
-                        <SegmentedButtons
-                            value={role}
-                            onValueChange={(value) => {
-                                setRole(value as 'student' | 'teacher');
-                                setErrors({});
-                            }}
-                            buttons={[
-                                {
-                                    value: 'student',
-                                    label: 'Student',
-                                    disabled: isSubmitting || authLoading
-                                },
-                                {
-                                    value: 'teacher',
-                                    label: 'Teacher',
-                                    disabled: isSubmitting || authLoading
-                                },
-                            ]}
-                            style={styles.segmentedButtons}
-                        />
+                        <View>
+                            <Text style={[styles.label, { color: getTextColor() }]}>I am a:</Text>
+                            <View style={styles.roleContainer}>
+                                <TouchableOpacity
+                                    style={[styles.roleButton, role === 'student' && styles.roleButtonActive, { backgroundColor: getSurfaceColor() }]}
+                                    onPress={() => {
+                                        setRole('student');
+                                        setErrors({});
+                                    }}
+                                    disabled={isSubmitting || authLoading}
+                                    accessible
+                                    accessibilityRole="button"
+                                    accessibilityState={{ selected: role === 'student' }}
+                                >
+                                    <Text style={[styles.roleButtonText, role === 'student' && styles.roleButtonTextActive]}>
+                                        Student
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.roleButton, role === 'teacher' && styles.roleButtonActive, { backgroundColor: getSurfaceColor() }]}
+                                    onPress={() => {
+                                        setRole('teacher');
+                                        setErrors({});
+                                    }}
+                                    disabled={isSubmitting || authLoading}
+                                    accessible
+                                    accessibilityRole="button"
+                                    accessibilityState={{ selected: role === 'teacher' }}
+                                >
+                                    <Text style={[styles.roleButtonText, role === 'teacher' && styles.roleButtonTextActive]}>
+                                        Teacher
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
 
                         {/* Common Fields */}
-                        <TextInput
+                        <Input
                             label="Full Name"
                             value={fullName}
-                            onChangeText={(text) => {
-                                setFullName(text);
-                                setErrors({ ...errors, fullName: '' });
-                            }}
-                            style={styles.input}
+                            onChangeText={handleFullNameChange}
                             disabled={isSubmitting || authLoading}
-                            mode="outlined"
-                            error={!!errors.fullName}
+                            error={errors.fullName}
                         />
-                        {errors.fullName ? (
-                            <HelperText type="error" visible={!!errors.fullName}>
-                                {errors.fullName}
-                            </HelperText>
-                        ) : null}
 
-                        <TextInput
+                        <Input
                             label="Email"
                             value={email}
-                            onChangeText={(text) => {
-                                setEmail(text);
-                                setErrors({ ...errors, email: '' });
-                            }}
+                            onChangeText={handleEmailChange}
                             autoCapitalize="none"
                             keyboardType="email-address"
-                            style={styles.input}
                             disabled={isSubmitting || authLoading}
-                            mode="outlined"
-                            error={!!errors.email}
+                            error={errors.email}
                         />
-                        {errors.email ? (
-                            <HelperText type="error" visible={!!errors.email}>
-                                {errors.email}
-                            </HelperText>
-                        ) : null}
 
-                        <TextInput
+                        <Input
                             label="Password"
                             value={password}
-                            onChangeText={(text) => {
-                                setPassword(text);
-                                setErrors({ ...errors, password: '' });
-                            }}
+                            onChangeText={handlePasswordChange}
                             secureTextEntry={!showPassword}
                             autoCapitalize="none"
-                            style={styles.input}
                             disabled={isSubmitting || authLoading}
-                            mode="outlined"
-                            error={!!errors.password}
-                            right={
-                                <TextInput.Icon
-                                    icon={showPassword ? 'eye-off' : 'eye'}
-                                    onPress={() => setShowPassword(!showPassword)}
-                                />
-                            }
+                            error={errors.password}
                         />
                         <PasswordStrengthIndicator password={password} />
-                        {errors.password ? (
-                            <HelperText type="error" visible={!!errors.password}>
-                                {errors.password}
-                            </HelperText>
-                        ) : null}
 
-                        <TextInput
+                        <Input
                             label="Confirm Password"
                             value={confirmPassword}
-                            onChangeText={(text) => {
-                                setConfirmPassword(text);
-                                setErrors({ ...errors, confirmPassword: '' });
-                            }}
+                            onChangeText={handleConfirmPasswordChange}
                             secureTextEntry={!showConfirmPassword}
                             autoCapitalize="none"
-                            style={styles.input}
                             disabled={isSubmitting || authLoading}
-                            mode="outlined"
-                            error={!!errors.confirmPassword}
-                            right={
-                                <TextInput.Icon
-                                    icon={showConfirmPassword ? 'eye-off' : 'eye'}
-                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                />
-                            }
+                            error={errors.confirmPassword}
                         />
-                        {errors.confirmPassword ? (
-                            <HelperText type="error" visible={!!errors.confirmPassword}>
-                                {errors.confirmPassword}
-                            </HelperText>
-                        ) : null}
 
                         {/* Student-Specific Fields */}
                         {role === 'student' && (
                             <>
-                                <TextInput
+                                <Input
                                     label="Enrollment Number"
                                     value={enrollmentNumber}
-                                    onChangeText={(text) => {
-                                        setEnrollmentNumber(text);
-                                        setErrors({ ...errors, enrollmentNumber: '' });
-                                    }}
-                                    style={styles.input}
+                                    onChangeText={handleEnrollmentChange}
                                     disabled={isSubmitting || authLoading}
-                                    mode="outlined"
-                                    error={!!errors.enrollmentNumber}
+                                    error={errors.enrollmentNumber}
                                     keyboardType="numeric"
                                 />
-                                {errors.enrollmentNumber ? (
-                                    <HelperText type="error" visible={!!errors.enrollmentNumber}>
-                                        {errors.enrollmentNumber}
-                                    </HelperText>
-                                ) : null}
 
-                                <Text style={styles.label}>Class Level</Text>
-                                <View style={styles.pickerContainer}>
-                                    <Picker
-                                        selectedValue={classLevel}
-                                        onValueChange={(value) => setClassLevel(value)}
-                                        enabled={!isSubmitting && !authLoading}
-                                    >
-                                        {CLASS_LEVELS.map((level) => (
-                                            <Picker.Item
-                                                key={level.value}
-                                                label={level.label}
-                                                value={level.value}
-                                            />
-                                        ))}
-                                    </Picker>
+                                <View>
+                                    <Text style={[styles.label, { color: getTextColor() }]}>Class Level</Text>
+                                    <View style={[styles.pickerContainer, { backgroundColor: getSurfaceColor() }]}>
+                                        <Picker
+                                            selectedValue={classLevel}
+                                            onValueChange={(value) => setClassLevel(value)}
+                                            enabled={!isSubmitting && !authLoading}
+                                        >
+                                            {CLASS_LEVELS.map((level) => (
+                                                <Picker.Item
+                                                    key={level.value}
+                                                    label={level.label}
+                                                    value={level.value}
+                                                />
+                                            ))}
+                                        </Picker>
+                                    </View>
                                 </View>
 
                                 {classLevel.startsWith('grad_year') && (
-                                    <>
-                                        <Text style={styles.label}>Branch</Text>
-                                        <View style={styles.pickerContainer}>
+                                    <View>
+                                        <Text style={[styles.label, { color: getTextColor() }]}>Branch</Text>
+                                        <View style={[styles.pickerContainer, { backgroundColor: getSurfaceColor() }]}>
                                             <Picker
                                                 selectedValue={branch}
                                                 onValueChange={(value) => setBranch(value)}
@@ -377,16 +348,19 @@ export default function SignUpScreen({ navigation }: Props) {
                                                 ))}
                                             </Picker>
                                         </View>
-                                    </>
+                                        {errors.branch && (
+                                            <Text style={styles.errorText}>{errors.branch}</Text>
+                                        )}
+                                    </View>
                                 )}
                             </>
                         )}
 
                         {/* Teacher-Specific Fields */}
                         {role === 'teacher' && (
-                            <>
-                                <Text style={styles.label}>Department</Text>
-                                <View style={styles.pickerContainer}>
+                            <View>
+                                <Text style={[styles.label, { color: getTextColor() }]}>Department</Text>
+                                <View style={[styles.pickerContainer, { backgroundColor: getSurfaceColor() }]}>
                                     <Picker
                                         selectedValue={department}
                                         onValueChange={(value) => setDepartment(value)}
@@ -401,31 +375,31 @@ export default function SignUpScreen({ navigation }: Props) {
                                         ))}
                                     </Picker>
                                 </View>
-                            </>
+                                {errors.department && (
+                                    <Text style={styles.errorText}>{errors.department}</Text>
+                                )}
+                            </View>
                         )}
 
                         <Button
-                            mode="contained"
+                            variant="primary"
                             onPress={handleSignUp}
                             loading={isSubmitting || authLoading}
                             disabled={isSubmitting || authLoading || !isFormValid()}
-                            style={styles.signUpButton}
                         >
                             Sign Up
                         </Button>
 
                         <View style={styles.signInContainer}>
                             <Text style={styles.signInText}>Already have an account? </Text>
-                            <Button
-                                mode="text"
+                            <TouchableOpacity
                                 onPress={() => navigation.navigate('SignIn')}
                                 disabled={isSubmitting || authLoading}
-                                compact
                             >
-                                Sign In
-                            </Button>
+                                <Text style={styles.signInLink}>Sign In</Text>
+                            </TouchableOpacity>
                         </View>
-                    </View>
+                    </Stack>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -435,100 +409,87 @@ export default function SignUpScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
     },
     scrollContent: {
         flexGrow: 1,
+        paddingVertical: 32,
     },
     content: {
-        padding: 20,
-        paddingTop: 40,
+        padding: 16,
+        maxWidth: 500,
+        width: '100%',
+        alignSelf: 'center',
     },
     title: {
+        fontSize: 32,
+        fontWeight: '700',
         textAlign: 'center',
-        marginBottom: 8,
-        fontSize: 28,
-        fontWeight: 'bold',
+        marginBottom: 4,
     },
     subtitle: {
-        textAlign: 'center',
-        marginBottom: 24,
         fontSize: 16,
-        color: '#666',
-    },
-    form: {
-        width: '100%',
+        color: '#6B7280',
+        textAlign: 'center',
+        marginBottom: 32,
     },
     label: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
         marginBottom: 8,
-        marginTop: 8,
-        color: '#333',
+        marginTop: 16,
     },
-    segmentedButtons: {
-        marginBottom: 16,
+    roleContainer: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 24,
     },
-    input: {
-        marginBottom: 4,
-        backgroundColor: 'white',
+    roleButton: {
+        flex: 1,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 14,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        alignItems: 'center',
+    },
+    roleButtonActive: {
+        borderColor: '#6366F1',
+        backgroundColor: '#6366F110',
+    },
+    roleButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    roleButtonTextActive: {
+        color: '#6366F1',
     },
     pickerContainer: {
-        backgroundColor: 'white',
-        borderRadius: 4,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#ccc',
-        marginBottom: 12,
-    },
-    loadingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        backgroundColor: 'white',
-        borderRadius: 4,
-        marginBottom: 12,
-    },
-    loadingText: {
-        marginLeft: 12,
-        color: '#666',
-    },
-    errorContainer: {
-        padding: 12,
-        backgroundColor: '#ffebee',
-        borderRadius: 4,
-        marginBottom: 12,
+        borderColor: '#D1D5DB',
+        marginBottom: 16,
+        overflow: 'hidden',
     },
     errorText: {
-        color: '#c62828',
+        fontSize: 14,
+        color: '#EF4444',
+        marginTop: 4,
         marginBottom: 8,
-    },
-    signUpButton: {
-        marginTop: 16,
-        paddingVertical: 6,
     },
     signInContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 16,
+        marginTop: 24,
     },
     signInText: {
-        fontSize: 14,
-        color: '#666',
+        fontSize: 16,
+        color: '#6B7280',
     },
-    verificationBanner: {
-        marginBottom: 16,
-        backgroundColor: '#e3f2fd',
-        borderRadius: 8,
-    },
-    bannerText: {
-        fontSize: 14,
-        color: '#333',
-        lineHeight: 20,
-    },
-    bannerTitle: {
-        fontWeight: 'bold',
-        fontSize: 15,
-        color: '#1976d2',
+    signInLink: {
+        fontSize: 16,
+        color: '#6366F1',
+        fontWeight: '600',
     },
 });

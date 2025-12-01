@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { colors, spacing, typography } from '../lib/theme';
+import { useTheme } from '../lib/design-system/ThemeContext';
 
 interface DateRangePickerProps {
     startDate: Date;
@@ -17,6 +17,7 @@ export default function DateRangePicker({
     onStartDateChange,
     onEndDateChange,
 }: DateRangePickerProps) {
+    const { tokens, getTextSecondaryColor } = useTheme();
     const [showStartPicker, setShowStartPicker] = useState(false);
     const [showEndPicker, setShowEndPicker] = useState(false);
 
@@ -27,6 +28,31 @@ export default function DateRangePicker({
             year: 'numeric'
         });
     };
+
+    const styles = StyleSheet.create({
+        container: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingVertical: tokens.spacing.sm,
+            gap: tokens.spacing.md,
+        },
+        dateContainer: {
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: tokens.spacing.sm,
+        },
+        label: {
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextSecondaryColor(),
+            fontWeight: tokens.typography.body.fontWeight,
+        },
+        dateButton: {
+            flex: 1,
+            borderRadius: tokens.borders.radius.medium,
+        },
+    });
 
     return (
         <View style={styles.container}>
@@ -85,27 +111,3 @@ export default function DateRangePicker({
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: spacing.sm,
-        gap: spacing.md,
-    },
-    dateContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    label: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-        fontWeight: typography.fontWeight.medium,
-    },
-    dateButton: {
-        flex: 1,
-    },
-});

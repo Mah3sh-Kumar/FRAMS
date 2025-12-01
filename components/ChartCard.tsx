@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import { Card, Title } from 'react-native-paper';
-import { colors, spacing, shadows } from '../lib/theme';
+import { View, StyleSheet, Text } from 'react-native';
+import Card from './design-system/primitives/Card';
+import { tokens } from '../lib/design-system/tokens';
 
 interface ChartCardProps {
     title: string;
@@ -10,25 +10,27 @@ interface ChartCardProps {
 
 export default function ChartCard({ title, children }: ChartCardProps) {
     return (
-        <Card style={styles.card}>
-            <Card.Content>
-                <Title style={styles.title}>{title}</Title>
+        <Card variant="elevated">
+            <View style={styles.cardContent}>
+                <Text style={styles.title}>{title}</Text>
                 <View style={styles.chartContainer}>
                     {children}
                 </View>
-            </Card.Content>
+            </View>
         </Card>
     );
 }
 
 const styles = StyleSheet.create({
-    card: {
-        marginBottom: spacing.md,
-        backgroundColor: colors.background.paper,
-        ...shadows.md,
+    cardContent: {
+        padding: tokens.spacing.md,
     },
     title: {
-        marginBottom: spacing.md,
+        fontSize: tokens.typography.h3.fontSize,
+        fontWeight: tokens.typography.h3.fontWeight,
+        lineHeight: tokens.typography.h3.lineHeight,
+        color: tokens.colors.theme.light.text,
+        marginBottom: tokens.spacing.md,
     },
     chartContainer: {
         alignItems: 'center',

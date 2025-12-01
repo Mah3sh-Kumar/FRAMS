@@ -1,15 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
-import { Title, Card, Text, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Dimensions, Text, TouchableOpacity } from 'react-native';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { supabase } from '../../lib/supabase';
-import ChartCard from '../../components/ChartCard';
+import { useTheme } from '../../lib/design-system/ThemeContext';
+import GlassmorphicWidget from '../../components/design-system/analytics/GlassmorphicWidget';
+import HeatmapChart, { HeatmapDataPoint } from '../../components/design-system/analytics/HeatmapChart';
+import ProgressRing from '../../components/design-system/analytics/ProgressRing';
+import { Stack } from '../../components/design-system/layout';
+import Card from '../../components/design-system/primitives/Card';
+import Button from '../../components/design-system/primitives/Button';
+import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
 import DateRangePicker from '../../components/DateRangePicker';
-import FilterBar from '../../components/FilterBar';
+import GradientBackground from '../../components/GradientBackground';
+import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 export default function ReportsScreen() {
+    const { tokens, getTextColor, getTextSecondaryColor } = useTheme();
     const [stats, setStats] = useState({
         totalStudents: 0,
         totalTeachers: 0,
@@ -24,6 +32,7 @@ export default function ReportsScreen() {
         end: new Date(),
     });
     const [attendanceTrend, setAttendanceTrend] = useState<any[]>([]);
+    const [heatmapData, setHeatmapData] = useState<HeatmapDataPoint[]>([]);
     const [assignmentCompletion, setAssignmentCompletion] = useState<any>({});
     const [subjectPerformance, setSubjectPerformance] = useState<any[]>([]);
 
@@ -95,6 +104,21 @@ export default function ReportsScreen() {
                 }));
 
                 setAttendanceTrend(trend);
+
+                // Generate heatmap data for last 4 weeks
+                const heatmap: HeatmapDataPoint[] = [];
+                const today = new Date();
+                for (let week = 0; week < 4; week++) {
+                    for (let day = 0; day < 7; day++) {
+                        const date = new Date(today);
+                        date.setDate(date.getDate() - (week * 7 + (6 - day)));
+                        const dateStr = date.toISOString().split('T')[0];
+                        const dayData = grouped[dateStr];
+                        const value = dayData ? (dayData.present / dayData.total) * 100 : 0;
+                        heatmap.push({ day, week, value });
+                    }
+                }
+                setHeatmapData(heatmap);
             }
         } catch (e) {
             console.error(e);
@@ -178,13 +202,6 @@ export default function ReportsScreen() {
         }
     }
 
-    if (loading) return (
-        <View style={styles.loader}>
-            <ActivityIndicator size="large" />
-            <Text style={{ marginTop: 10 }}>Loading reports...</Text>
-        </View>
-    );
-
     const attendanceChartData = {
         labels: attendanceTrend.slice(-7).map(t => new Date(t.date).getDate().toString()),
         datasets: [{
@@ -210,209 +227,278 @@ export default function ReportsScreen() {
         }]
     };
 
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        header: {
+            padding: tokens.spacing.lg,
+            paddingTop: tokens.spacing.xl,
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: tokens.colors.neutral.white,
+            marginBottom: tokens.spacing.xs,
+        },
+        subtitle: {
+            fontSize: tokens.typography.body.fontSize,
+            color: 'rgba(255, 255, 255, 0.9)',
+        },
+        statsGrid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: tokens.spacing.md,
+            paddingHorizontal: tokens.spacing.md,
+            marginBottom: tokens.spacing.lg,
+        },
+        statWidget: {
+            flex: 1,
+            minWidth: '45%',
+        },
+        statContent: {
+            alignItems: 'center',
+            gap: tokens.spacing.sm,
+        },
+        statValue: {
+            fontSize: tokens.typography.display.fontSize,
+            fontWeight: tokens.typography.display.fontWeight,
+            color: getTextColor(),
+        },
+        statLabel: {
+            fontSize: tokens.typography.caption.fontSize,
+            color: getTextSecondaryColor(),
+            textAlign: 'center',
+        },
+        dateRangeContainer: {
+            paddingHorizontal: tokens.spacing.md,
+            marginBottom: tokens.spacing.lg,
+        },
+        chartCard: {
+            marginHorizontal: tokens.spacing.md,
+            marginBottom: tokens.spacing.lg,
+        },
+        chartTitle: {
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            color: getTextColor(),
+            marginBottom: tokens.spacing.md,
+        },
+        completionWidget: {
+            marginHorizontal: tokens.spacing.md,
+            marginBottom: tokens.spacing.lg,
+            alignItems: 'center',
+            paddingVertical: tokens.spacing.lg,
+        },
+        completionPercentage: {
+            fontSize: 48,
+            fontWeight: '700',
+            color: tokens.colors.success.main,
+            marginVertical: tokens.spacing.md,
+        },
+        completionText: {
+            fontSize: tokens.typography.body.fontSize,
+            color: getTextSecondaryColor(),
+            textAlign: 'center',
+        },
+        exportButton: {
+            marginTop: tokens.spacing.xs,
+        },
+        loader: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+    });
+
+    if (loading) return (
+        <GradientBackground variant="admin">
+            <View style={styles.loader}>
+                <LoadingSpinner size="large" />
+                <Text style={{ marginTop: tokens.spacing.md, color: tokens.colors.neutral.white }}>Loading reports...</Text>
+            </View>
+        </GradientBackground>
+    );
+
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <Title style={styles.title}>Institution Reports</Title>
-                <IconButton icon="export" mode="contained" onPress={exportReport} />
-            </View>
+        <GradientBackground variant="admin">
+            <ScrollView style={styles.container}>
+                <View style={styles.header}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View>
+                            <Text style={styles.title}>Institution Reports</Text>
+                            <Text style={styles.subtitle}>Analytics and insights</Text>
+                        </View>
+                        <TouchableOpacity onPress={exportReport} style={styles.exportButton}>
+                            <Ionicons name="download-outline" size={28} color={tokens.colors.neutral.white} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
 
-            {/* Statistics Cards */}
-            <View style={styles.statsGrid}>
-                <Surface style={[styles.statCard, { backgroundColor: '#e3f2fd' }]}>
-                    <IconButton icon="account-group" size={32} iconColor="#1976d2" />
-                    <Text style={styles.statValue}>{stats.totalStudents}</Text>
-                    <Text style={styles.statLabel}>Total Students</Text>
-                </Surface>
+                <Stack spacing="lg" style={{ paddingBottom: tokens.spacing.xl }}>
+                    {/* Statistics Cards */}
+                    <View style={styles.statsGrid}>
+                        <GlassmorphicWidget style={styles.statWidget} elevation="md">
+                            <View style={styles.statContent}>
+                                <Ionicons name="school" size={32} color={tokens.colors.primary.main} />
+                                <Text style={styles.statValue}>{stats.totalStudents}</Text>
+                                <Text style={styles.statLabel}>Total Students</Text>
+                            </View>
+                        </GlassmorphicWidget>
 
-                <Surface style={[styles.statCard, { backgroundColor: '#e8f5e9' }]}>
-                    <IconButton icon="account-tie" size={32} iconColor="#388e3c" />
-                    <Text style={styles.statValue}>{stats.totalTeachers}</Text>
-                    <Text style={styles.statLabel}>Total Teachers</Text>
-                </Surface>
+                        <GlassmorphicWidget style={styles.statWidget} elevation="md">
+                            <View style={styles.statContent}>
+                                <Ionicons name="briefcase" size={32} color={tokens.colors.success.main} />
+                                <Text style={styles.statValue}>{stats.totalTeachers}</Text>
+                                <Text style={styles.statLabel}>Total Teachers</Text>
+                            </View>
+                        </GlassmorphicWidget>
 
-                <Surface style={[styles.statCard, { backgroundColor: '#f3e5f5' }]}>
-                    <IconButton icon="shield-account" size={32} iconColor="#7b1fa2" />
-                    <Text style={styles.statValue}>{stats.totalAdmins}</Text>
-                    <Text style={styles.statLabel}>Admins</Text>
-                </Surface>
+                        <GlassmorphicWidget style={styles.statWidget} elevation="md">
+                            <View style={styles.statContent}>
+                                <Ionicons name="shield-checkmark" size={32} color={tokens.colors.roles.admin.main} />
+                                <Text style={styles.statValue}>{stats.totalAdmins}</Text>
+                                <Text style={styles.statLabel}>Admins</Text>
+                            </View>
+                        </GlassmorphicWidget>
 
-                <Surface style={[styles.statCard, { backgroundColor: '#fff3e0' }]}>
-                    <IconButton icon="check-circle" size={32} iconColor="#f57c00" />
-                    <Text style={styles.statValue}>{stats.attendanceToday}</Text>
-                    <Text style={styles.statLabel}>Present Today</Text>
-                </Surface>
+                        <GlassmorphicWidget style={styles.statWidget} elevation="md">
+                            <View style={styles.statContent}>
+                                <Ionicons name="checkmark-circle" size={32} color={tokens.colors.warning.main} />
+                                <Text style={styles.statValue}>{stats.attendanceToday}</Text>
+                                <Text style={styles.statLabel}>Present Today</Text>
+                            </View>
+                        </GlassmorphicWidget>
 
-                <Surface style={[styles.statCard, { backgroundColor: '#fce4ec' }]}>
-                    <IconButton icon="book-open-variant" size={32} iconColor="#c2185b" />
-                    <Text style={styles.statValue}>{stats.assignmentsTotal}</Text>
-                    <Text style={styles.statLabel}>Total Assignments</Text>
-                </Surface>
+                        <GlassmorphicWidget style={styles.statWidget} elevation="md">
+                            <View style={styles.statContent}>
+                                <Ionicons name="document-text" size={32} color={tokens.colors.info.main} />
+                                <Text style={styles.statValue}>{stats.assignmentsTotal}</Text>
+                                <Text style={styles.statLabel}>Total Assignments</Text>
+                            </View>
+                        </GlassmorphicWidget>
 
-                <Surface style={[styles.statCard, { backgroundColor: '#e0f2f1' }]}>
-                    <IconButton icon="check-all" size={32} iconColor="#00796b" />
-                    <Text style={styles.statValue}>{stats.assignmentsCompleted}</Text>
-                    <Text style={styles.statLabel}>Completed</Text>
-                </Surface>
-            </View>
+                        <GlassmorphicWidget style={styles.statWidget} elevation="md">
+                            <View style={styles.statContent}>
+                                <Ionicons name="checkmark-done" size={32} color={tokens.colors.accent.main} />
+                                <Text style={styles.statValue}>{stats.assignmentsCompleted}</Text>
+                                <Text style={styles.statLabel}>Completed</Text>
+                            </View>
+                        </GlassmorphicWidget>
+                    </View>
 
-            {/* Date Range Filter */}
-            <View style={styles.dateRangeContainer}>
-                <DateRangePicker
-                    startDate={dateRange.start}
-                    endDate={dateRange.end}
-                    onStartDateChange={(date: Date) => setDateRange({ ...dateRange, start: date })}
-                    onEndDateChange={(date: Date) => setDateRange({ ...dateRange, end: date })}
-                />
-            </View>
+                    {/* Date Range Filter */}
+                    <View style={styles.dateRangeContainer}>
+                        <DateRangePicker
+                            startDate={dateRange.start}
+                            endDate={dateRange.end}
+                            onStartDateChange={(date: Date) => setDateRange({ ...dateRange, start: date })}
+                            onEndDateChange={(date: Date) => setDateRange({ ...dateRange, end: date })}
+                        />
+                    </View>
 
-            {/* Attendance Trend Chart */}
-            {attendanceTrend.length > 0 && (
-                <ChartCard title="Attendance Trends (Last 7 Days)">
-                    <LineChart
-                        data={attendanceChartData}
-                        width={Dimensions.get('window').width - 64}
-                        height={220}
-                        yAxisSuffix="%"
-                        chartConfig={{
-                            backgroundColor: '#ffffff',
-                            backgroundGradientFrom: '#ffffff',
-                            backgroundGradientTo: '#ffffff',
-                            decimalPlaces: 0,
-                            color: (opacity = 1) => `rgba(25, 118, 210, ${opacity})`,
-                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                            style: { borderRadius: 16 },
-                            propsForDots: {
-                                r: '6',
-                                strokeWidth: '2',
-                                stroke: '#1976d2'
-                            }
-                        }}
-                        bezier
-                        style={{ marginVertical: 8, borderRadius: 16 }}
-                    />
-                </ChartCard>
-            )}
+                    {/* Attendance Trend Chart */}
+                    {attendanceTrend.length > 0 && (
+                        <GlassmorphicWidget style={styles.chartCard} elevation="lg">
+                            <Text style={styles.chartTitle}>Attendance Trends (Last 7 Days)</Text>
+                            <LineChart
+                                data={attendanceChartData}
+                                width={Dimensions.get('window').width - 64}
+                                height={220}
+                                yAxisSuffix="%"
+                                chartConfig={{
+                                    backgroundColor: 'transparent',
+                                    backgroundGradientFrom: 'transparent',
+                                    backgroundGradientTo: 'transparent',
+                                    decimalPlaces: 0,
+                                    color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
+                                    labelColor: (opacity = 1) => getTextColor(),
+                                    style: { borderRadius: tokens.borders.radius.medium },
+                                    propsForDots: {
+                                        r: '6',
+                                        strokeWidth: '2',
+                                        stroke: tokens.colors.primary.main
+                                    }
+                                }}
+                                bezier
+                                style={{ marginVertical: tokens.spacing.sm, borderRadius: tokens.borders.radius.medium }}
+                            />
+                        </GlassmorphicWidget>
+                    )}
 
-            {/* Assignment Completion Chart */}
-            {Object.keys(assignmentCompletion).length > 0 && (
-                <ChartCard title="Assignment Completion Rate">
-                    <BarChart
-                        data={assignmentChartData}
-                        width={Dimensions.get('window').width - 64}
-                        height={220}
-                        yAxisLabel=""
-                        yAxisSuffix=""
-                        chartConfig={{
-                            backgroundColor: '#ffffff',
-                            backgroundGradientFrom: '#ffffff',
-                            backgroundGradientTo: '#ffffff',
-                            decimalPlaces: 0,
-                            color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                        }}
-                        style={{ marginVertical: 8, borderRadius: 16 }}
-                    />
-                </ChartCard>
-            )}
+                    {/* Weekly Attendance Heatmap */}
+                    {heatmapData.length > 0 && (
+                        <GlassmorphicWidget style={styles.chartCard} elevation="lg">
+                            <Text style={styles.chartTitle}>Weekly Attendance Heatmap</Text>
+                            <HeatmapChart data={heatmapData} />
+                        </GlassmorphicWidget>
+                    )}
 
-            {/* Subject Performance Chart */}
-            {subjectPerformance.length > 0 && (
-                <ChartCard title="Subject-wise Performance (Top 5)">
-                    <BarChart
-                        data={subjectChartData}
-                        width={Dimensions.get('window').width - 64}
-                        height={220}
-                        yAxisLabel=""
-                        yAxisSuffix=""
-                        chartConfig={{
-                            backgroundColor: '#ffffff',
-                            backgroundGradientFrom: '#ffffff',
-                            backgroundGradientTo: '#ffffff',
-                            decimalPlaces: 0,
-                            color: (opacity = 1) => `rgba(156, 39, 176, ${opacity})`,
-                            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                        }}
-                        style={{ marginVertical: 8, borderRadius: 16 }}
-                    />
-                </ChartCard>
-            )}
+                    {/* Assignment Completion Chart */}
+                    {Object.keys(assignmentCompletion).length > 0 && (
+                        <GlassmorphicWidget style={styles.chartCard} elevation="lg">
+                            <Text style={styles.chartTitle}>Assignment Completion Status</Text>
+                            <BarChart
+                                data={assignmentChartData}
+                                width={Dimensions.get('window').width - 64}
+                                height={220}
+                                yAxisLabel=""
+                                yAxisSuffix=""
+                                chartConfig={{
+                                    backgroundColor: 'transparent',
+                                    backgroundGradientFrom: 'transparent',
+                                    backgroundGradientTo: 'transparent',
+                                    decimalPlaces: 0,
+                                    color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
+                                    labelColor: (opacity = 1) => getTextColor(),
+                                }}
+                                style={{ marginVertical: tokens.spacing.sm, borderRadius: tokens.borders.radius.medium }}
+                            />
+                        </GlassmorphicWidget>
+                    )}
 
-            {/* Completion Rate Card */}
-            <Card style={styles.completionCard}>
-                <Card.Content>
-                    <Title>Assignment Completion Rate</Title>
-                    <Text style={styles.completionPercentage}>
-                        {stats.assignmentsTotal > 0 
-                            ? ((stats.assignmentsCompleted / stats.assignmentsTotal) * 100).toFixed(1)
-                            : 0}%
-                    </Text>
-                    <Text style={{ color: '#666', textAlign: 'center' }}>
-                        {stats.assignmentsCompleted} of {stats.assignmentsTotal} assignments completed
-                    </Text>
-                </Card.Content>
-            </Card>
-        </ScrollView>
+                    {/* Subject Performance Chart */}
+                    {subjectPerformance.length > 0 && (
+                        <GlassmorphicWidget style={styles.chartCard} elevation="lg">
+                            <Text style={styles.chartTitle}>Subject-wise Performance (Top 5)</Text>
+                            <BarChart
+                                data={subjectChartData}
+                                width={Dimensions.get('window').width - 64}
+                                height={220}
+                                yAxisLabel=""
+                                yAxisSuffix=""
+                                chartConfig={{
+                                    backgroundColor: 'transparent',
+                                    backgroundGradientFrom: 'transparent',
+                                    backgroundGradientTo: 'transparent',
+                                    decimalPlaces: 0,
+                                    color: (opacity = 1) => `rgba(124, 58, 237, ${opacity})`,
+                                    labelColor: (opacity = 1) => getTextColor(),
+                                }}
+                                style={{ marginVertical: tokens.spacing.sm, borderRadius: tokens.borders.radius.medium }}
+                            />
+                        </GlassmorphicWidget>
+                    )}
+
+                    {/* Completion Rate Card */}
+                    <GlassmorphicWidget style={styles.completionWidget} elevation="lg">
+                        <Text style={styles.chartTitle}>Assignment Completion Rate</Text>
+                        <ProgressRing
+                            progress={stats.assignmentsTotal > 0 
+                                ? (stats.assignmentsCompleted / stats.assignmentsTotal) * 100
+                                : 0}
+                            size={120}
+                            strokeWidth={12}
+                            gradientColors={tokens.colors.success.gradient as [string, string]}
+                        />
+                        <Text style={styles.completionText}>
+                            {stats.assignmentsCompleted} of {stats.assignmentsTotal} assignments completed
+                        </Text>
+                    </GlassmorphicWidget>
+                </Stack>
+            </ScrollView>
+        </GradientBackground>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: '#f5f5f5',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    title: {
-        fontSize: 24,
-    },
-    loader: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    statsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
-        marginBottom: 20,
-    },
-    statCard: {
-        width: '48%',
-        padding: 15,
-        borderRadius: 12,
-        alignItems: 'center',
-        elevation: 2,
-    },
-    statValue: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        marginTop: -5,
-    },
-    statLabel: {
-        fontSize: 12,
-        color: '#666',
-        marginTop: 5,
-        textAlign: 'center',
-    },
-    dateRangeContainer: {
-        marginBottom: 20,
-    },
-    completionCard: {
-        marginTop: 10,
-        marginBottom: 20,
-        elevation: 2,
-    },
-    completionPercentage: {
-        fontSize: 48,
-        fontWeight: 'bold',
-        color: '#4caf50',
-        textAlign: 'center',
-        marginVertical: 10,
-    },
-});
+

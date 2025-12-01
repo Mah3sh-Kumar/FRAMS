@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text } from 'react-native-paper';
+import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../lib/theme';
+import { tokens } from '../lib/design-system/tokens';
 
 interface EmptyStateProps {
     icon?: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -13,7 +12,7 @@ interface EmptyStateProps {
 export default function EmptyState({ icon = 'inbox', title, message }: EmptyStateProps) {
     return (
         <View style={styles.container}>
-            <MaterialCommunityIcons name={icon} size={64} color={colors.text.disabled} />
+            <MaterialCommunityIcons name={icon} size={64} color={tokens.colors.neutral.gray400} />
             <Text style={styles.title}>{title}</Text>
             {message && <Text style={styles.message}>{message}</Text>}
         </View>
@@ -25,19 +24,21 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: spacing.xl,
+        padding: tokens.spacing.xl,
     },
     title: {
-        fontSize: typography.fontSize.lg,
-        fontWeight: typography.fontWeight.semibold,
-        color: colors.text.primary,
-        marginTop: spacing.md,
+        fontSize: tokens.typography.h2.fontSize,
+        fontWeight: tokens.typography.h2.fontWeight,
+        lineHeight: tokens.typography.h2.lineHeight,
+        color: tokens.colors.theme.light.text,
+        marginTop: tokens.spacing.md,
         textAlign: 'center',
     },
     message: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-        marginTop: spacing.sm,
+        fontSize: tokens.typography.body.fontSize,
+        lineHeight: tokens.typography.body.lineHeight,
+        color: tokens.colors.theme.light.textSecondary,
+        marginTop: tokens.spacing.sm,
         textAlign: 'center',
     },
 });

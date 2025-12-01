@@ -1,7 +1,7 @@
-import React, { ReactNode, useRef, useEffect } from 'react';
-import { StyleSheet, Animated, Pressable, View } from 'react-native';
+import React, { ReactNode, useRef } from 'react';
+import { StyleSheet, Animated, Pressable } from 'react-native';
 import { Card as PaperCard } from 'react-native-paper';
-import { shadows } from '../lib/theme';
+import { useTheme } from '../lib/design-system/ThemeContext';
 
 interface AnimatedCardProps {
     children: ReactNode;
@@ -11,23 +11,42 @@ interface AnimatedCardProps {
 }
 
 export default function AnimatedCard({ children, onPress, style, glassmorphism = false }: AnimatedCardProps) {
+    const { tokens, getSurfaceColor, reducedMotion } = useTheme();
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     const handlePressIn = () => {
-        Animated.spring(scaleAnim, {
-            toValue: 0.97,
+        if (reducedMotion) return;
+        
+        Animated.timing(scaleAnim, {
+            toValue: 0.96,
+            duration: tokens.motion.duration.fast,
             useNativeDriver: true,
-            friction: 3,
         }).start();
     };
 
     const handlePressOut = () => {
-        Animated.spring(scaleAnim, {
+        if (reducedMotion) return;
+        
+        Animated.timing(scaleAnim, {
             toValue: 1,
+            duration: tokens.motion.duration.normal,
             useNativeDriver: true,
-            friction: 3,
         }).start();
     };
+
+    const styles = StyleSheet.create({
+        pressable: {
+            marginBottom: tokens.spacing.md,
+        },
+        card: {
+            ...tokens.shadows.md,
+            backgroundColor: getSurfaceColor(),
+            borderRadius: tokens.borders.radius.medium,
+        },
+        glassmorphism: {
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        },
+    });
 
     const content = (
         <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
@@ -58,16 +77,3 @@ export default function AnimatedCard({ children, onPress, style, glassmorphism =
 
     return content;
 }
-
-const styles = StyleSheet.create({
-    pressable: {
-        marginBottom: 12,
-    },
-    card: {
-        ...shadows.md,
-        backgroundColor: '#ffffff',
-    },
-    glassmorphism: {
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    },
-});

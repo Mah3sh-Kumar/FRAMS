@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Image, Alert, Platform } from 'react-native';
 import { Button, ActivityIndicator, IconButton } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import { colors, spacing } from '../lib/theme';
+import { useTheme } from '../lib/design-system/ThemeContext';
 
 interface ImagePickerComponentProps {
     currentImageUrl?: string;
@@ -17,6 +17,7 @@ export default function ImagePickerComponent({
     onImageUploaded,
     size = 120,
 }: ImagePickerComponentProps) {
+    const { tokens, getSurfaceColor, getTextSecondaryColor, getBorderColor } = useTheme();
     const [uploading, setUploading] = useState(false);
     const [imageUri, setImageUri] = useState<string | undefined>(currentImageUrl);
 
@@ -101,6 +102,42 @@ export default function ImagePickerComponent({
         }
     };
 
+    const styles = StyleSheet.create({
+        container: {
+            alignItems: 'center',
+            marginVertical: tokens.spacing.md,
+        },
+        imageContainer: {
+            position: 'relative',
+            borderRadius: tokens.borders.radius.full,
+            overflow: 'hidden',
+        },
+        image: {
+            borderRadius: tokens.borders.radius.full,
+        },
+        placeholder: {
+            backgroundColor: getSurfaceColor(),
+            borderRadius: tokens.borders.radius.full,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: tokens.borders.width.medium,
+            borderColor: getBorderColor(),
+        },
+        uploadingOverlay: {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: tokens.borders.radius.full,
+        },
+        cameraButton: {
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            margin: 0,
+        },
+    });
+
     return (
         <View style={styles.container}>
             <View style={[styles.imageContainer, { width: size, height: size }]}>
@@ -114,14 +151,14 @@ export default function ImagePickerComponent({
                         <IconButton
                             icon="account"
                             size={size * 0.5}
-                            iconColor={colors.text.secondary}
+                            iconColor={getTextSecondaryColor()}
                         />
                     </View>
                 )}
 
                 {uploading && (
                     <View style={styles.uploadingOverlay}>
-                        <ActivityIndicator size="large" color={colors.primary.main} />
+                        <ActivityIndicator size="large" color={tokens.colors.primary.main} />
                     </View>
                 )}
 
@@ -129,7 +166,7 @@ export default function ImagePickerComponent({
                     icon="camera"
                     mode="contained"
                     iconColor="white"
-                    containerColor={colors.primary.main}
+                    containerColor={tokens.colors.primary.main}
                     size={24}
                     style={styles.cameraButton}
                     onPress={pickImage}
@@ -139,39 +176,3 @@ export default function ImagePickerComponent({
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        alignItems: 'center',
-        marginVertical: spacing.md,
-    },
-    imageContainer: {
-        position: 'relative',
-        borderRadius: 1000,
-        overflow: 'hidden',
-    },
-    image: {
-        borderRadius: 1000,
-    },
-    placeholder: {
-        backgroundColor: colors.background.paper,
-        borderRadius: 1000,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: colors.divider,
-    },
-    uploadingOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 1000,
-    },
-    cameraButton: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        margin: 0,
-    },
-});

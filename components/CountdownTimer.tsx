@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, Chip } from 'react-native-paper';
-import { colors, spacing, typography } from '../lib/theme';
+import { View, StyleSheet, Text } from 'react-native';
+import { Chip } from 'react-native-paper';
+import { tokens } from '../lib/design-system/tokens';
 
 interface CountdownTimerProps {
     dueDate: string;
@@ -51,7 +51,7 @@ export default function CountdownTimer({ dueDate, compact = false }: CountdownTi
                 textStyle={styles.chipText}
                 style={[
                     styles.chip,
-                    { backgroundColor: isOverdue ? colors.error.light : colors.warning.light },
+                    { backgroundColor: isOverdue ? tokens.colors.error.light : tokens.colors.warning.light },
                 ]}
             >
                 {timeLeft}
@@ -61,7 +61,7 @@ export default function CountdownTimer({ dueDate, compact = false }: CountdownTi
 
     return (
         <View style={styles.container}>
-            <Text style={[styles.text, { color: isOverdue ? colors.error.main : colors.warning.main }]}>
+            <Text style={[styles.text, { color: isOverdue ? tokens.colors.error.main : tokens.colors.warning.main }]}>
                 {timeLeft}
             </Text>
         </View>
@@ -70,16 +70,19 @@ export default function CountdownTimer({ dueDate, compact = false }: CountdownTi
 
 const styles = StyleSheet.create({
     container: {
-        marginTop: spacing.xs,
+        marginTop: tokens.spacing.xs,
     },
     text: {
-        fontSize: typography.fontSize.sm,
-        fontWeight: typography.fontWeight.medium,
+        fontSize: tokens.typography.body.fontSize,
+        fontWeight: tokens.typography.h3.fontWeight,
+        lineHeight: tokens.typography.body.lineHeight,
     },
     chip: {
         alignSelf: 'flex-start',
+        minHeight: 32,
     },
     chipText: {
-        fontSize: typography.fontSize.xs,
+        fontSize: tokens.typography.caption.fontSize,
+        lineHeight: tokens.typography.caption.lineHeight,
     },
 });

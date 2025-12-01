@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, Title, HelperText, Card } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { colors, spacing, typography } from '../lib/theme';
 import { isValidEmail } from '../lib/validation';
 import type { StackScreenProps } from '@react-navigation/stack';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import Button from '../components/design-system/primitives/Button';
+import Input from '../components/design-system/primitives/Input';
+import Card from '../components/design-system/primitives/Card';
+import { Stack } from '../components/design-system/layout';
 
 type Props = StackScreenProps<any, 'ForgotPassword'>;
 
 export default function ForgotPasswordScreen({ navigation }: Props) {
+    const { tokens, getTextColor, getSurfaceColor } = useTheme();
     const [email, setEmail] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
@@ -97,116 +101,104 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
         }
     };
 
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: tokens.colors.theme.light.background,
+        },
+        scrollContent: {
+            flexGrow: 1,
+            justifyContent: 'center',
+            padding: tokens.spacing.lg,
+        },
+        content: {
+            maxWidth: 400,
+            width: '100%',
+            alignSelf: 'center',
+        },
+        title: {
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            color: getTextColor(),
+            textAlign: 'center',
+            marginBottom: tokens.spacing.xs,
+        },
+        subtitle: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.neutral.gray600,
+            textAlign: 'center',
+            marginBottom: tokens.spacing.xl,
+        },
+        successText: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.success.main,
+            textAlign: 'center',
+            marginTop: tokens.spacing.md,
+            lineHeight: 22,
+        },
+        backLink: {
+            fontSize: tokens.typography.body.fontSize,
+            color: tokens.colors.primary.main,
+            fontWeight: tokens.typography.h3.fontWeight,
+            textAlign: 'center',
+            marginTop: tokens.spacing.lg,
+        },
+    });
+
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
+                showsVerticalScrollIndicator={false}
             >
                 <View style={styles.content}>
-                    <Title style={styles.title}>Reset Password</Title>
+                    <Text style={styles.title}>Reset Password</Text>
                     <Text style={styles.subtitle}>
                         Enter your email address and we'll send you instructions to reset your password.
                     </Text>
 
-                    <Card style={styles.card}>
-                        <Card.Content>
-                            <TextInput
-                                label="Email"
-                                value={email}
-                                onChangeText={(text) => {
-                                    setEmail(text);
-                                    setErrorMsg('');
-                                    setSuccessMsg('');
-                                }}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                                style={styles.input}
-                                disabled={isSubmitting}
-                                mode="outlined"
-                                error={!!errorMsg}
-                            />
+                    <Stack spacing="md">
+                        <Input
+                            label="Email"
+                            value={email}
+                            onChangeText={(text) => {
+                                setEmail(text);
+                                setErrorMsg('');
+                                setSuccessMsg('');
+                            }}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            disabled={isSubmitting}
+                            error={errorMsg}
+                        />
 
-                            {errorMsg ? (
-                                <HelperText type="error" visible={!!errorMsg}>
-                                    {errorMsg}
-                                </HelperText>
-                            ) : null}
+                        {successMsg ? (
+                            <Text style={styles.successText}>{successMsg}</Text>
+                        ) : null}
 
-                            {successMsg ? (
-                                <HelperText type="info" visible={!!successMsg} style={styles.successText}>
-                                    {successMsg}
-                                </HelperText>
-                            ) : null}
+                        <Button
+                            variant="primary"
+                            onPress={handleResetPassword}
+                            loading={isSubmitting}
+                            disabled={isSubmitting || !email}
+                        >
+                            Send Reset Link
+                        </Button>
 
-                            <Button
-                                mode="contained"
-                                onPress={handleResetPassword}
-                                loading={isSubmitting}
-                                disabled={isSubmitting || !email}
-                                style={styles.button}
-                            >
-                                Send Reset Link
-                            </Button>
-
-                            <Button
-                                mode="text"
-                                onPress={() => navigation.goBack()}
-                                disabled={isSubmitting}
-                                style={styles.backButton}
-                            >
-                                Back to Sign In
-                            </Button>
-                        </Card.Content>
-                    </Card>
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            disabled={isSubmitting}
+                        >
+                            <Text style={styles.backLink}>Back to Sign In</Text>
+                        </TouchableOpacity>
+                    </Stack>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.background.default,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: 'center',
-    },
-    content: {
-        padding: spacing.lg,
-    },
-    title: {
-        textAlign: 'center',
-        marginBottom: spacing.sm,
-        fontSize: typography.fontSize.xxl,
-        fontWeight: typography.fontWeight.bold,
-    },
-    subtitle: {
-        textAlign: 'center',
-        marginBottom: spacing.xl,
-        fontSize: typography.fontSize.md,
-        color: colors.text.secondary,
-    },
-    card: {
-        padding: spacing.md,
-    },
-    input: {
-        marginBottom: spacing.sm,
-        backgroundColor: colors.background.paper,
-    },
-    button: {
-        marginTop: spacing.md,
-        paddingVertical: spacing.xs,
-    },
-    backButton: {
-        marginTop: spacing.sm,
-    },
-    successText: {
-        color: colors.success.main,
-    },
-});

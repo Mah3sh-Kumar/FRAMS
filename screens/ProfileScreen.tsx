@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { TextInput, Button, Title, Card, Avatar, Switch, Text, Paragraph } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, Text, Image } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { updateUserProfile } from '../lib/database';
 import { uploadProfilePicture, uploadFaceRegistrationImage } from '../lib/storage';
-import { colors, spacing, typography, shadows } from '../lib/theme';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useTheme } from '../lib/design-system/ThemeContext';
+import LoadingSpinner from '../components/design-system/feedback/LoadingSpinner';
+import Button from '../components/design-system/primitives/Button';
+import Input from '../components/design-system/primitives/Input';
+import Card from '../components/design-system/primitives/Card';
 import ImagePickerComponent from '../components/ImagePickerComponent';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'Profile'>;
@@ -139,122 +142,135 @@ const handleFaceRegistration = async (uri: string) => {
     }
 };
 
+const { tokens, getBackgroundColor, getSurfaceColor, getTextColor, getTextSecondaryColor, getRoleColor } = useTheme();
+
 if (loading) {
     return <LoadingSpinner />;
 }
 
+const roleColor = getRoleColor();
+const gradientColors = roleColor ? roleColor.gradient : tokens.colors.primary.gradient;
+
 return (
-    <ScrollView style={styles.container}>
-        <View style={styles.header}>
-            <ImagePickerComponent
-                currentImageUrl={avatarUrl}
-                onImageSelected={handleImageSelected}
-                size={100}
-            />
-            <Title style={styles.name}>{fullName}</Title>
-            <Text style={styles.role}>{role?.toUpperCase()}</Text>
-        </View>
+    <ScrollView 
+        style={[styles.container, { backgroundColor: getBackgroundColor() }]}
+        keyboardShouldPersistTaps="always"
+        showsVerticalScrollIndicator={false}
+    >
+        {/* Gradient Profile Header */}
+        <LinearGradient
+            colors={gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.header}
+        >
+            <View style={styles.avatarContainer}>
+                <ImagePickerComponent
+                    currentImageUrl={avatarUrl}
+                    onImageSelected={handleImageSelected}
+                    size={100}
+                />
+            </View>
+            <Text style={styles.name}>{fullName}</Text>
+            <Text style={styles.roleText}>{role?.toUpperCase()}</Text>
+        </LinearGradient>
 
+        {/* Personal Information Card */}
         <Card style={styles.card}>
-            <Card.Content>
-                <Title>Personal Information</Title>
+            <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Personal Information</Text>
 
-                <TextInput
-                    label="Full Name"
-                    value={fullName}
-                    onChangeText={setFullName}
-                    disabled={!editing}
-                    mode="outlined"
-                    style={styles.input}
-                />
+            <Input
+                label="Full Name"
+                value={fullName}
+                onChangeText={setFullName}
+                disabled={!editing}
+            />
 
-                <TextInput
-                    label="Email"
-                    value={email}
-                    disabled={true}
-                    mode="outlined"
-                    style={styles.input}
-                />
+            <Input
+                label="Email"
+                value={email}
+                onChangeText={() => {}}
+                disabled={true}
+            />
 
-                {role === 'student' && (
-                    <>
-                        <TextInput
-                            label="Enrollment Number"
-                            value={enrollmentNumber}
+            {role === 'student' && (
+                <>
+                    <Input
+                        label="Enrollment Number"
+                        value={enrollmentNumber}
+                        onChangeText={() => {}}
+                        disabled={true}
+                    />
+                    {branch && (
+                        <Input
+                            label="Branch"
+                            value={branch}
+                            onChangeText={() => {}}
                             disabled={true}
-                            mode="outlined"
-                            style={styles.input}
                         />
-                        {branch && (
-                            <TextInput
-                                label="Branch"
-                                value={branch}
-                                disabled={true}
-                                mode="outlined"
-                                style={styles.input}
-                            />
-                        )}
-                        <View style={styles.section}>
-                            <Title style={styles.sectionTitle}>Face Recognition</Title>
-                            <Paragraph style={styles.sectionDescription}>
-                                Upload a clear photo of your face to enable automated attendance.
-                            </Paragraph>
-                            <ImagePickerComponent
-                                currentImageUrl={undefined} // Don't show preview of face reg image here
-                                onImageSelected={handleFaceRegistration}
-                                size={60}
-                            />
-                        </View>
+                    )}
+                </>
+            )}
+
+            {role === 'teacher' && (
+                <Input
+                    label="Department"
+                    value={department}
+                    onChangeText={setDepartment}
+                    disabled={!editing}
+                />
+            )}
+
+            <View style={styles.buttonContainer}>
+                {!editing ? (
+                    <Button
+                        variant="primary"
+                        onPress={() => setEditing(true)}
+                    >
+                        Edit Profile
+                    </Button>
+                ) : (
+                    <>
+                        <Button
+                            variant="primary"
+                            onPress={handleSave}
+                            loading={saving}
+                            disabled={saving}
+                            style={styles.buttonSpaced}
+                        >
+                            Save Changes
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            onPress={() => {
+                                setEditing(false);
+                                fetchProfile();
+                            }}
+                            disabled={saving}
+                        >
+                            Cancel
+                        </Button>
                     </>
                 )}
-
-                {role === 'teacher' && (
-                    <TextInput
-                        label="Department"
-                        value={department}
-                        onChangeText={setDepartment}
-                        disabled={!editing}
-                        mode="outlined"
-                        style={styles.input}
-                    />
-                )}
-
-                <View style={styles.buttonContainer}>
-                    {!editing ? (
-                        <Button
-                            mode="contained"
-                            onPress={() => setEditing(true)}
-                            style={styles.button}
-                        >
-                            Edit Profile
-                        </Button>
-                    ) : (
-                        <>
-                            <Button
-                                mode="contained"
-                                onPress={handleSave}
-                                loading={saving}
-                                disabled={saving}
-                                style={[styles.button, styles.buttonSpaced]}
-                            >
-                                Save Changes
-                            </Button>
-                            <Button
-                                mode="outlined"
-                                onPress={() => {
-                                    setEditing(false);
-                                    fetchProfile();
-                                }}
-                                disabled={saving}
-                                style={styles.button}
-                            >
-                                Cancel
-                            </Button>
-                        </>
-                    )}
-                </View>
-            </Card.Content>
+            </View>
         </Card>
+
+        {/* Face Recognition Section (Students Only) */}
+        {role === 'student' && (
+            <Card style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Face Recognition</Text>
+                <Text style={[styles.sectionDescription, { color: getTextSecondaryColor() }]}>
+                    Upload a clear photo of your face to enable automated attendance.
+                </Text>
+                <View style={styles.faceRegistrationContainer}>
+                    <ImagePickerComponent
+                        currentImageUrl={undefined}
+                        onImageSelected={handleFaceRegistration}
+                        size={60}
+                    />
+                </View>
+            </Card>
+        )}
     </ScrollView>
 );
 }
@@ -262,58 +278,56 @@ return (
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background.default,
     },
     header: {
         alignItems: 'center',
-        paddingVertical: spacing.xl,
-        backgroundColor: colors.background.paper,
-        ...shadows.sm,
+        paddingVertical: 48,
+        paddingHorizontal: 24,
     },
-    avatar: {
-        backgroundColor: colors.primary.main,
-        marginBottom: spacing.md,
+    avatarContainer: {
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+        borderRadius: 50,
     },
     name: {
-        fontSize: typography.fontSize.xl,
-        fontWeight: typography.fontWeight.bold,
-        marginBottom: spacing.xs,
+        fontSize: 26,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        marginBottom: 4,
+        textAlign: 'center',
     },
-    role: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-        fontWeight: typography.fontWeight.medium,
+    roleText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.9)',
+        letterSpacing: 1,
     },
     card: {
-        margin: spacing.md,
-        ...shadows.md,
-    },
-    input: {
-        marginBottom: spacing.md,
-        backgroundColor: colors.background.paper,
-    },
-    buttonContainer: {
-        marginTop: spacing.md,
-    },
-    button: {
-        marginVertical: spacing.xs,
-    },
-    buttonSpaced: {
-        marginBottom: spacing.sm,
-    },
-    section: {
-        marginTop: spacing.lg,
-        paddingTop: spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: colors.divider,
+        marginHorizontal: 16,
+        marginTop: 16,
     },
     sectionTitle: {
-        fontSize: typography.fontSize.md,
-        marginBottom: spacing.xs,
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: 16,
     },
     sectionDescription: {
-        fontSize: typography.fontSize.sm,
-        color: colors.text.secondary,
-        marginBottom: spacing.md,
+        fontSize: 15,
+        lineHeight: 22,
+        marginBottom: 16,
+    },
+    buttonContainer: {
+        marginTop: 8,
+    },
+    buttonSpaced: {
+        marginBottom: 12,
+    },
+    faceRegistrationContainer: {
+        alignItems: 'center',
+        paddingVertical: 16,
     },
 });

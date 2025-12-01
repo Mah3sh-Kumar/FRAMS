@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, lazy, Suspense } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from './lib/types';
@@ -11,15 +11,17 @@ import { ToastProvider } from './components/Toast';
 import { paperTheme } from './lib/theme';
 import { parseDeepLink } from './lib/deeplink';
 import type { NavigationContainerRef } from '@react-navigation/native';
+import { ThemeProvider, useTheme } from './lib/design-system/ThemeContext';
 
-// Auth Screens
+// Auth Screens - Load immediately (needed for initial render)
 import SignInScreen from './screens/SignInScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './screens/ResetPasswordScreen';
 import EmailVerificationScreen from './screens/EmailVerificationScreen';
+import UnverifiedScreen from './screens/UnverifiedScreen';
 
-// Common Screens
+// Common Screens - Load immediately
 import DashboardScreen from './screens/DashboardScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
@@ -27,18 +29,17 @@ import SettingsScreen from './screens/SettingsScreen';
 import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
 import TermsScreen from './screens/TermsScreen';
 import ChangePasswordScreen from './screens/ChangePasswordScreen';
-import UnverifiedScreen from './screens/UnverifiedScreen';
 
-// Student Screens
+// Student Screens - Load immediately
 import AttendanceScreen from './screens/student/AttendanceScreen';
 import AssignmentScreen from './screens/student/AssignmentScreen';
 
-// Teacher Screens
+// Teacher Screens - Load immediately
 import AttendanceManager from './screens/teacher/AttendanceManager';
 import AssignmentManager from './screens/teacher/AssignmentManager';
 import MarksReviewManager from './screens/teacher/MarksReviewManager';
 
-// Admin Screens
+// Admin Screens - Load immediately
 import UserManagement from './screens/admin/UserManagement';
 import ReportsScreen from './screens/admin/ReportsScreen';
 
@@ -46,7 +47,17 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 function Navigation() {
   const { session, role, isVerified, loading } = useAuth();
+  const { setRole: setThemeRole } = useTheme();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+
+  // Sync role from AuthContext to ThemeContext
+  useEffect(() => {
+    if (role) {
+      setThemeRole(role as 'student' | 'teacher' | 'admin');
+    } else {
+      setThemeRole(null);
+    }
+  }, [role, setThemeRole]);
 
   useEffect(() => {
     // Handle deep links when app is already open
@@ -199,13 +210,15 @@ function Navigation() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <PaperProvider theme={paperTheme}>
-        <ToastProvider>
-          <AuthProvider>
-            <Navigation />
-          </AuthProvider>
-        </ToastProvider>
-      </PaperProvider>
+      <ThemeProvider>
+        <PaperProvider theme={paperTheme}>
+          <ToastProvider>
+            <AuthProvider>
+              <Navigation />
+            </AuthProvider>
+          </ToastProvider>
+        </PaperProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
