@@ -553,9 +553,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Project Maintainer**: Your Name
 
-- Email: your.email@example.com
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Profile](https://linkedin.com/in/yourprofile)
+- Email: maheshnirmala007@gmail.com
+- GitHub: [@yourusername](https://github.com/Mah3sh-Kumar)
+- LinkedIn: [Your Profile](https://www.linkedin.com/in/maheshkumar-dev/)
 
 ---
 
@@ -567,3 +567,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 
 </div>
+
