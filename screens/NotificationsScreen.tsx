@@ -12,7 +12,7 @@ import {
 } from '../lib/notifications';
 import { tokens } from '../lib/design-system/tokens';
 import EmptyState from '../components/EmptyState';
-import { LoadingSpinner } from '../components/design-system/feedback';
+import LoadingSpinner from '../components/LoadingSpinner';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'Notifications'>;

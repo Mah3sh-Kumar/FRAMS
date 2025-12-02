@@ -4,11 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../lib/design-system/tokens';
 
 type GradientVariant = 'primary' | 'secondary' | 'student' | 'teacher' | 'admin';
+type GradientColors = readonly [string, string, ...string[]];
 
 interface GradientBackgroundProps {
     children: ReactNode;
     variant?: GradientVariant;
-    customColors?: string[];
+    customColors?: readonly [string, string, ...string[]];
 }
 
 export default function GradientBackground({
@@ -16,7 +17,7 @@ export default function GradientBackground({
     variant = 'primary',
     customColors
 }: GradientBackgroundProps) {
-    const getGradientColors = (): string[] => {
+    const getGradientColors = (): GradientColors => {
         if (customColors) return customColors;
 
         switch (variant) {

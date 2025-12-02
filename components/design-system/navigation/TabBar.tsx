@@ -70,6 +70,9 @@ export default function TabBar({
   const indicatorPosition = useRef(new Animated.Value(0)).current;
   const indicatorWidth = useRef(new Animated.Value(0)).current;
   
+  // Track initialization state to avoid accessing private _value property
+  const isInitialized = useRef(false);
+  
   // Track tab layouts for indicator positioning
   const tabLayouts = useRef<{ [key: string]: { x: number; width: number } }>({});
 
@@ -103,9 +106,10 @@ export default function TabBar({
     tabLayouts.current[tabId] = { x, width };
     
     // Initialize indicator position for the first active tab
-    if (tabId === activeTab && indicatorWidth._value === 0) {
+    if (tabId === activeTab && !isInitialized.current) {
       indicatorPosition.setValue(x);
       indicatorWidth.setValue(width);
+      isInitialized.current = true;
     }
   };
 

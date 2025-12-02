@@ -369,9 +369,12 @@ export default function AssignmentScreen() {
                     {filteredAssignments.length === 0 ? (
                         <EmptyState
                             icon="book-open-variant"
-                            message={searchQuery ? 'No assignments found' :
+                            title={searchQuery ? 'No assignments found' :
                                 filterStatus === 'all' ? 'No assignments yet' :
                                     `No ${filterStatus} assignments`}
+                            message={searchQuery ? 'Try adjusting your search criteria' :
+                                filterStatus === 'all' ? 'Your assignments will appear here' :
+                                    `You have no ${filterStatus} assignments at this time`}
                         />
                     ) : (
                         <Stack spacing="md">

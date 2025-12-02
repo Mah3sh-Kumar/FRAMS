@@ -200,7 +200,7 @@ export default function Button({
   /**
    * Get gradient colors for primary variant
    */
-  const getGradientColors = (): [string, string] => {
+  const getGradientColors = (): readonly [string, string] => {
     return tokens.colors.primary.gradient;
   };
 

@@ -13,8 +13,7 @@ import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinn
 import DateRangePicker from '../../components/DateRangePicker';
 import GradientBackground from '../../components/GradientBackground';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { exportCSV } from '../../lib/csvExport';
 
 export default function ReportsScreen() {
     const { tokens, getTextColor, getTextSecondaryColor } = useTheme();
@@ -194,9 +193,7 @@ export default function ReportsScreen() {
                 csv += `${s.name},${s.avgScore.toFixed(2)}\n`;
             });
 
-            const fileUri = `${(FileSystem as any).documentDirectory}institution_report.csv`;
-            await FileSystem.writeAsStringAsync(fileUri, csv);
-            await Sharing.shareAsync(fileUri);
+            await exportCSV(csv, 'institution_report.csv');
         } catch (error) {
             console.error('Export error:', error);
         }
@@ -263,11 +260,12 @@ export default function ReportsScreen() {
         statValue: {
             fontSize: tokens.typography.display.fontSize,
             fontWeight: tokens.typography.display.fontWeight,
-            color: getTextColor(),
+            color: tokens.colors.neutral.gray900,
         },
         statLabel: {
             fontSize: tokens.typography.caption.fontSize,
-            color: getTextSecondaryColor(),
+            color: tokens.colors.neutral.gray800,
+            fontWeight: '600',
             textAlign: 'center',
         },
         dateRangeContainer: {
@@ -281,7 +279,7 @@ export default function ReportsScreen() {
         chartTitle: {
             fontSize: tokens.typography.h3.fontSize,
             fontWeight: tokens.typography.h3.fontWeight,
-            color: getTextColor(),
+            color: tokens.colors.neutral.gray900,
             marginBottom: tokens.spacing.md,
         },
         completionWidget: {
@@ -298,7 +296,7 @@ export default function ReportsScreen() {
         },
         completionText: {
             fontSize: tokens.typography.body.fontSize,
-            color: getTextSecondaryColor(),
+            color: tokens.colors.neutral.gray700,
             textAlign: 'center',
         },
         exportButton: {
@@ -412,7 +410,7 @@ export default function ReportsScreen() {
                                     backgroundGradientTo: 'transparent',
                                     decimalPlaces: 0,
                                     color: (opacity = 1) => `rgba(79, 70, 229, ${opacity})`,
-                                    labelColor: (opacity = 1) => getTextColor(),
+                                    labelColor: (opacity = 1) => tokens.colors.neutral.gray900,
                                     style: { borderRadius: tokens.borders.radius.medium },
                                     propsForDots: {
                                         r: '6',
@@ -450,7 +448,7 @@ export default function ReportsScreen() {
                                     backgroundGradientTo: 'transparent',
                                     decimalPlaces: 0,
                                     color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
-                                    labelColor: (opacity = 1) => getTextColor(),
+                                    labelColor: (opacity = 1) => tokens.colors.neutral.gray900,
                                 }}
                                 style={{ marginVertical: tokens.spacing.sm, borderRadius: tokens.borders.radius.medium }}
                             />
@@ -473,7 +471,7 @@ export default function ReportsScreen() {
                                     backgroundGradientTo: 'transparent',
                                     decimalPlaces: 0,
                                     color: (opacity = 1) => `rgba(124, 58, 237, ${opacity})`,
-                                    labelColor: (opacity = 1) => getTextColor(),
+                                    labelColor: (opacity = 1) => tokens.colors.neutral.gray900,
                                 }}
                                 style={{ marginVertical: tokens.spacing.sm, borderRadius: tokens.borders.radius.medium }}
                             />

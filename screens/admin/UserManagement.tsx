@@ -9,15 +9,13 @@ import Button from '../../components/design-system/primitives/Button';
 import Input from '../../components/design-system/primitives/Input';
 import GlassmorphicWidget from '../../components/design-system/analytics/GlassmorphicWidget';
 import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
-import { Stack } from '../../components/design-system/layout';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import EmptyState from '../../components/EmptyState';
 import GradientBackground from '../../components/GradientBackground';
 import { Picker } from '@react-native-picker/picker';
 import { DEPARTMENTS, CLASS_LEVELS, BRANCHES } from '../../lib/constants';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { exportCSV } from '../../lib/csvExport';
 
 type UserData = {
     id: string;
@@ -327,9 +325,7 @@ export default function UserManagement() {
                 csv += row + '\n';
             });
 
-            const fileUri = `${(FileSystem as any).documentDirectory}users_export.csv`;
-            await FileSystem.writeAsStringAsync(fileUri, csv);
-            await Sharing.shareAsync(fileUri);
+            await exportCSV(csv, 'users_export.csv');
         } catch (error) {
             Alert.alert('Error', 'Failed to export users');
             console.error(error);
@@ -384,7 +380,7 @@ export default function UserManagement() {
         },
         headerSubtitle: {
             fontSize: tokens.typography.body.fontSize,
-            color: 'rgba(255, 255, 255, 0.9)',
+            color: tokens.colors.neutral.white,
         },
         headerButton: {
             width: 48,
@@ -417,11 +413,14 @@ export default function UserManagement() {
         statValue: { 
             fontSize: tokens.typography.display.fontSize, 
             fontWeight: tokens.typography.display.fontWeight,
+            color: tokens.colors.neutral.gray900,
         },
         statLabel: { 
             fontSize: tokens.typography.caption.fontSize, 
             marginTop: tokens.spacing.xs, 
             textAlign: 'center',
+            color: tokens.colors.neutral.gray800,
+            fontWeight: '600',
         },
         searchContainer: {
             paddingHorizontal: tokens.spacing.md,
@@ -486,7 +485,12 @@ export default function UserManagement() {
         badgeText: {
             fontSize: tokens.typography.caption.fontSize,
             fontWeight: '600',
-            color: 'white',
+            color: tokens.colors.neutral.white,
+        },
+        infoBadgeText: {
+            fontSize: tokens.typography.caption.fontSize,
+            fontWeight: '600',
+            color: tokens.colors.neutral.gray900,
         },
         actions: { 
             flexDirection: 'row', 
@@ -566,13 +570,13 @@ export default function UserManagement() {
                             </View>
                         )}
                         {item.role === 'teacher' && item.department && (
-                            <View style={[styles.infoBadge, { backgroundColor: tokens.colors.neutral.gray300 }]}>
-                                <Text style={[styles.badgeText, { color: tokens.colors.neutral.gray700 }]}>{item.department}</Text>
+                            <View style={[styles.infoBadge, { backgroundColor: tokens.colors.neutral.gray200 }]}>
+                                <Text style={styles.infoBadgeText}>{item.department}</Text>
                             </View>
                         )}
                         {item.role === 'student' && item.enrollment_number && (
-                            <View style={[styles.infoBadge, { backgroundColor: tokens.colors.neutral.gray300 }]}>
-                                <Text style={[styles.badgeText, { color: tokens.colors.neutral.gray700 }]}>{item.enrollment_number}</Text>
+                            <View style={[styles.infoBadge, { backgroundColor: tokens.colors.neutral.gray200 }]}>
+                                <Text style={styles.infoBadgeText}>{item.enrollment_number}</Text>
                             </View>
                         )}
                     </View>
@@ -626,36 +630,36 @@ export default function UserManagement() {
                 <GlassmorphicWidget style={styles.statCard}>
                     <View style={styles.statContent}>
                         <Ionicons name="people" size={24} color={tokens.colors.info.main} />
-                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.total}</Text>
-                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Total Users</Text>
+                        <Text style={styles.statValue}>{userStats.total}</Text>
+                        <Text style={styles.statLabel}>Total Users</Text>
                     </View>
                 </GlassmorphicWidget>
                 <GlassmorphicWidget style={styles.statCard}>
                     <View style={styles.statContent}>
                         <Ionicons name="shield-checkmark" size={24} color={tokens.colors.roles.admin.main} />
-                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.admins}</Text>
-                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Admins</Text>
+                        <Text style={styles.statValue}>{userStats.admins}</Text>
+                        <Text style={styles.statLabel}>Admins</Text>
                     </View>
                 </GlassmorphicWidget>
                 <GlassmorphicWidget style={styles.statCard}>
                     <View style={styles.statContent}>
                         <Ionicons name="briefcase" size={24} color={tokens.colors.roles.teacher.main} />
-                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.teachers}</Text>
-                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Teachers</Text>
+                        <Text style={styles.statValue}>{userStats.teachers}</Text>
+                        <Text style={styles.statLabel}>Teachers</Text>
                     </View>
                 </GlassmorphicWidget>
                 <GlassmorphicWidget style={styles.statCard}>
                     <View style={styles.statContent}>
                         <Ionicons name="school" size={24} color={tokens.colors.roles.student.main} />
-                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.students}</Text>
-                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Students</Text>
+                        <Text style={styles.statValue}>{userStats.students}</Text>
+                        <Text style={styles.statLabel}>Students</Text>
                     </View>
                 </GlassmorphicWidget>
                 <GlassmorphicWidget style={styles.statCard}>
                     <View style={styles.statContent}>
                         <Ionicons name="alert-circle" size={24} color={tokens.colors.warning.main} />
-                        <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.unverified}</Text>
-                        <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Unverified</Text>
+                        <Text style={styles.statValue}>{userStats.unverified}</Text>
+                        <Text style={styles.statLabel}>Unverified</Text>
                     </View>
                 </GlassmorphicWidget>
             </ScrollView>

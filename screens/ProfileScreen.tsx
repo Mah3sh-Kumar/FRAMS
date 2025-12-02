@@ -43,8 +43,8 @@ export default function ProfileScreen({ navigation }: Props) {
                 .from('users')
                 .select(`
                     *,
-                    students (*),
-                    teachers (*)
+                    students!students_user_id_fkey(*),
+                    teachers!teachers_id_fkey(*)
                 `)
                 .eq('id', userId)
                 .single();

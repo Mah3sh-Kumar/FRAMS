@@ -12,8 +12,7 @@ import { Stack } from '../../components/design-system/layout';
 import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
 import DateRangePicker from '../../components/DateRangePicker';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { exportCSV } from '../../lib/csvExport';
 
 export default function MarksReviewManager() {
     const { user } = useAuth();
@@ -133,9 +132,7 @@ export default function MarksReviewManager() {
                 csv += `${s.student_name},${s.enrollment_number},${s.assignment_title},${s.subject_name},${s.score},${s.max_score},${percentage}%,${new Date(s.created_at).toLocaleDateString()}\n`;
             });
 
-            const fileUri = `${(FileSystem as any).documentDirectory}marks_export.csv`;
-            await FileSystem.writeAsStringAsync(fileUri, csv);
-            await Sharing.shareAsync(fileUri);
+            await exportCSV(csv, 'marks_export.csv');
         } catch (error) {
             Alert.alert('Error', 'Failed to export data');
         }
