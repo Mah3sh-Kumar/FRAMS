@@ -12,7 +12,7 @@ import { supabase } from '../../lib/supabase';
 
 export default function AdminDashboard() {
     const navigation = useNavigation();
-    const { tokens, getTextColor } = useTheme();
+    const { tokens } = useTheme();
     const [stats, setStats] = useState({
         totalUsers: 0,
         totalStudents: 0,
@@ -101,12 +101,12 @@ export default function AdminDashboard() {
         },
         subtitle: {
             fontSize: tokens.typography.body.fontSize,
-            color: 'rgba(255, 255, 255, 0.9)',
+            color: tokens.colors.neutral.white,
         },
         sectionHeader: {
             fontSize: tokens.typography.h2.fontSize,
             fontWeight: tokens.typography.h2.fontWeight,
-            color: getTextColor(),
+            color: tokens.colors.neutral.white,
             marginBottom: tokens.spacing.md,
             marginTop: tokens.spacing.lg,
         },
@@ -137,12 +137,12 @@ export default function AdminDashboard() {
         featureTitle: {
             fontSize: tokens.typography.h3.fontSize,
             fontWeight: tokens.typography.h3.fontWeight,
-            color: getTextColor(),
+            color: tokens.colors.neutral.gray900,
             marginBottom: tokens.spacing.xs / 2,
         },
         featureDescription: {
             fontSize: tokens.typography.caption.fontSize,
-            color: tokens.colors.neutral.gray600,
+            color: tokens.colors.neutral.gray700,
         },
         statsGrid: {
             flexDirection: 'row',
@@ -159,12 +159,13 @@ export default function AdminDashboard() {
         statValue: {
             fontSize: tokens.typography.display.fontSize,
             fontWeight: tokens.typography.display.fontWeight,
-            color: getTextColor(),
+            color: tokens.colors.neutral.gray900,
             marginTop: tokens.spacing.sm,
         },
         statLabel: {
             fontSize: tokens.typography.caption.fontSize,
-            color: tokens.colors.neutral.gray600,
+            color: tokens.colors.neutral.gray800,
+            fontWeight: '600',
             marginTop: tokens.spacing.xs,
             textAlign: 'center',
         },
@@ -175,7 +176,7 @@ export default function AdminDashboard() {
         progressLabel: {
             fontSize: tokens.typography.h3.fontSize,
             fontWeight: tokens.typography.h3.fontWeight,
-            color: getTextColor(),
+            color: tokens.colors.neutral.gray900,
             marginBottom: tokens.spacing.md,
         },
     });

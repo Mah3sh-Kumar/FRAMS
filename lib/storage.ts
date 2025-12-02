@@ -19,9 +19,10 @@ export async function uploadProfilePicture(
       { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
     );
 
-    // Convert to blob
+    // Convert to ArrayBuffer (React Native compatible)
     const response = await fetch(manipulatedImage.uri);
-    const blob = await response.blob();
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
 
     // Create file path: userId/avatar.jpg
     const filePath = `${userId}/avatar.jpg`;
@@ -29,7 +30,7 @@ export async function uploadProfilePicture(
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from('avatars')
-      .upload(filePath, blob, {
+      .upload(filePath, uint8Array, {
         contentType: 'image/jpeg',
         upsert: true, // Replace existing file
       });
@@ -124,9 +125,10 @@ export async function uploadFaceRegistrationImage(
       { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
     );
 
-    // Convert to blob
+    // Convert to ArrayBuffer (React Native compatible)
     const response = await fetch(manipulatedImage.uri);
-    const blob = await response.blob();
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
 
     // Create file path: face_registrations/userId/reference.jpg
     const filePath = `face_registrations/${userId}/reference.jpg`;
@@ -134,7 +136,7 @@ export async function uploadFaceRegistrationImage(
     // Upload to Supabase Storage (using 'avatars' bucket for now as it's known to exist/work)
     const { data, error } = await supabase.storage
       .from('avatars')
-      .upload(filePath, blob, {
+      .upload(filePath, uint8Array, {
         contentType: 'image/jpeg',
         upsert: true,
       });

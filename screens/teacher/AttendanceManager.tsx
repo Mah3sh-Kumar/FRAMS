@@ -12,8 +12,7 @@ import StudentProfileCard from '../../components/design-system/attendance/Studen
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { exportCSV } from '../../lib/csvExport';
 
 export default function AttendanceManager() {
     const { user } = useAuth();
@@ -164,9 +163,7 @@ export default function AttendanceManager() {
                 csv += `${record.date},${record.students?.full_name},${record.students?.enrollment_number},${record.status}\n`;
             });
 
-            const fileUri = `${(FileSystem as any).documentDirectory}attendance_export.csv`;
-            await FileSystem.writeAsStringAsync(fileUri, csv);
-            await Sharing.shareAsync(fileUri);
+            await exportCSV(csv, 'attendance_export.csv');
         } catch (error) {
             Alert.alert('Error', 'Failed to export attendance');
         }

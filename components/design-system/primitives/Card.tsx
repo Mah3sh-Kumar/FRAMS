@@ -126,7 +126,7 @@ export default function Card({
   /**
    * Get gradient colors for header strip
    */
-  const getGradientColors = (): [string, string] => {
+  const getGradientColors = (): readonly [string, string] => {
     const roleColor = getRoleColor();
     if (roleColor) {
       return roleColor.gradient;

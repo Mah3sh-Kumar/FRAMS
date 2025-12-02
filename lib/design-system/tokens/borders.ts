@@ -21,6 +21,11 @@ export interface BorderWidthTokens {
 export interface BorderTokens {
   radius: BorderRadiusTokens;
   width: BorderWidthTokens;
+  // Convenience accessors for backward compatibility
+  small: number;
+  medium: number;
+  large: number;
+  full: number;
 }
 
 /**
@@ -48,4 +53,9 @@ export const width: BorderWidthTokens = {
 export const borders: BorderTokens = {
   radius,
   width,
+  // Convenience accessors for direct access
+  small: radius.small,
+  medium: radius.medium,
+  large: radius.large,
+  full: radius.full,
 };

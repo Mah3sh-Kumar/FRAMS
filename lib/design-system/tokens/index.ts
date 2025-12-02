@@ -62,7 +62,6 @@ export type {
   ElevationSystem,
   MotionTokens,
   BorderTokens,
-  DesignTokens,
 };
 
 export default tokens;
