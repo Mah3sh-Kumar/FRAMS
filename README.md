@@ -77,6 +77,9 @@ The system eliminates manual attendance processes, reduces proxy attendance, and
 
 #### �‍c💼 Administrators
 - Complete user management (students, teachers, staff)
+- **Organization Management**: Create and manage classes, branches, and departments
+- **Dynamic Dropdowns**: Database-driven organizational data with real-time updates
+- **Dependency Checking**: Prevent deletion of items in use by students/teachers
 - System-wide analytics and reporting
 - Device management and monitoring
 - Bulk user operations (import/export)
@@ -98,10 +101,13 @@ The system eliminates manual attendance processes, reduces proxy attendance, and
 
 ### 🎨 Modern UI/UX
 - Material Design 3 components
+- **Enhanced Dropdowns**: Improved picker with search, proper value display, and visual feedback
+- **Keyboard-Aware Forms**: Automatic scrolling to keep inputs visible above keyboard
+- **Screenshot Prevention**: Security feature to prevent unauthorized screen capture
 - Dark mode support (coming soon)
 - Smooth animations and transitions
 - Responsive layouts for all screen sizes
-- Accessibility features
+- Full accessibility support (screen readers, keyboard navigation)
 
 ---
 
@@ -190,7 +196,16 @@ For hardware setup:
    backend/add_user_verification.sql
    backend/improvements.sql
    ```
-3. Verify tables are created in **Table Editor**
+3. Run the organizational data migration:
+   ```sql
+   -- Create organizational tables and migrate data
+   supabase/migrations/003_organizational_data_schema.sql
+   supabase/migrations/004_populate_organizational_data.sql
+   ```
+4. Verify tables are created in **Table Editor**:
+   - `org_classes` - Academic grade levels
+   - `org_branches` - Academic streams/divisions
+   - `org_departments` - Organizational departments
 
 #### Step 3: Configure Storage
 
@@ -344,17 +359,25 @@ Or scan the QR code with:
    - Open the app
    - Use admin credentials to login
 
-3. **Add Users**:
-   - Navigate to Admin Dashboard
+3. **Configure Organization**:
+   - Navigate to Admin Dashboard → Organization Manager
+   - Create classes (e.g., Grade 1, Grade 2, etc.)
+   - Create branches for each class (e.g., Arts, Science, Commerce)
+   - Create departments (e.g., Mathematics, English, etc.)
+   - These will automatically appear in signup and user management forms
+
+4. **Add Users**:
+   - Navigate to Admin Dashboard → User Management
    - Add teachers and students
+   - Select from dynamically populated dropdowns
    - Upload profile pictures for face recognition
 
-4. **Configure Classes**:
+5. **Configure Classes**:
    - Create subjects
    - Assign teachers to subjects
    - Enroll students in classes
 
-5. **Register Faces**:
+6. **Register Faces**:
    - Students upload clear face photos
    - System generates face encodings
    - Encodings synced to Raspberry Pi devices
@@ -423,6 +446,8 @@ frams/
 │   └── ...
 ├── components/            # Reusable React components
 │   ├── design-system/    # Design system components
+│   ├── EnhancedPicker.tsx  # Improved dropdown component
+│   ├── KeyboardAwareScrollView.tsx  # Keyboard handling
 │   ├── Toast.tsx
 │   └── ...
 ├── context/              # React Context providers
@@ -434,9 +459,13 @@ frams/
 ├── lib/                  # Utility functions
 │   ├── supabase.ts
 │   ├── database.ts
+│   ├── organization.ts   # Organization CRUD operations
+│   ├── screenshotPrevention.ts  # Screenshot prevention
 │   └── ...
 ├── screens/              # App screens
 │   ├── admin/
+│   │   ├── OrganizationManager.tsx  # Manage classes/branches/departments
+│   │   └── ...
 │   ├── teacher/
 │   ├── student/
 │   └── ...
@@ -507,6 +536,21 @@ For complete API documentation, see the Supabase auto-generated docs in your pro
 - **Solution**: Enable camera in `raspi-config`
 - Check camera cable connection
 - Test with: `raspistill -o test.jpg`
+
+**Issue**: Dropdown values not displaying correctly
+- **Solution**: Ensure you're using EnhancedPicker component
+- Check that items array has proper label/value structure
+- Verify value prop matches one of the item values
+
+**Issue**: Keyboard covering input fields
+- **Solution**: Wrap form in KeyboardAwareScrollView component
+- Adjust extraScrollHeight prop if needed
+- Ensure ScrollView has enough content height
+
+**Issue**: Cannot delete class/branch/department
+- **Solution**: Check if item is in use by existing users
+- Remove user associations before deletion
+- View error message for specific dependencies
 
 ### Getting Help
 

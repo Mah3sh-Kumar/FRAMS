@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import * as SecureStore from 'expo-secure-store';
 import type { StackScreenProps } from '@react-navigation/stack';
@@ -10,6 +10,7 @@ import Button from '../components/design-system/primitives/Button';
 import Input from '../components/design-system/primitives/Input';
 import { Stack } from '../components/design-system/layout';
 import GradientBackground from '../components/GradientBackground';
+import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 
 type Props = StackScreenProps<RootStackParamList, 'SignIn'>;
 
@@ -103,90 +104,81 @@ export default function SignInScreen({ navigation }: Props) {
     }, [email, password, rememberMe, signIn]);
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        <KeyboardAwareScrollView
+            contentContainerStyle={styles.scrollContent}
+            extraScrollHeight={20}
+            enableAutomaticScroll={true}
         >
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="always"
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={styles.content}>
-                    <Text style={[styles.title, { color: getTextColor() }]}>Welcome Back</Text>
-                    <Text style={styles.subtitle}>Sign in to continue</Text>
+            <View style={styles.content}>
+                <Text style={[styles.title, { color: getTextColor() }]}>Welcome Back</Text>
+                <Text style={styles.subtitle}>Sign in to continue</Text>
 
-                    <Stack spacing="md">
-                        <Input
-                            label="Email"
-                            value={email}
-                            onChangeText={handleEmailChange}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
+                <Stack spacing="md">
+                    <Input
+                        label="Email"
+                        value={email}
+                        onChangeText={handleEmailChange}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                        disabled={isSubmitting || loading}
+                        error={!!errorMsg && !email ? 'Email is required' : undefined}
+                        returnKeyType="next"
+                    />
+
+                    <Input
+                        label="Password"
+                        value={password}
+                        onChangeText={handlePasswordChange}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        disabled={isSubmitting || loading}
+                        error={!!errorMsg && !password ? 'Password is required' : undefined}
+                        returnKeyType="done"
+                    />
+
+                    {errorMsg ? (
+                        <Text style={styles.errorText}>{errorMsg}</Text>
+                    ) : null}
+
+                    <View style={styles.rememberMeContainer}>
+                        <TouchableOpacity
+                            style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
+                            onPress={() => setRememberMe(!rememberMe)}
                             disabled={isSubmitting || loading}
-                            error={!!errorMsg && !email ? 'Email is required' : undefined}
-                            returnKeyType="next"
-                        />
-
-                        <Input
-                            label="Password"
-                            value={password}
-                            onChangeText={handlePasswordChange}
-                            secureTextEntry={!showPassword}
-                            autoCapitalize="none"
-                            disabled={isSubmitting || loading}
-                            error={!!errorMsg && !password ? 'Password is required' : undefined}
-                            returnKeyType="done"
-                        />
-
-                        {errorMsg ? (
-                            <Text style={styles.errorText}>{errorMsg}</Text>
-                        ) : null}
-
-                        <View style={styles.rememberMeContainer}>
-                            <TouchableOpacity
-                                style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
-                                onPress={() => setRememberMe(!rememberMe)}
-                                disabled={isSubmitting || loading}
-                                accessible
-                                accessibilityRole="checkbox"
-                                accessibilityState={{ checked: rememberMe }}
-                            >
-                                {rememberMe && <View style={styles.checkboxInner} />}
-                            </TouchableOpacity>
-                            <Text style={[styles.rememberMeText, { color: getTextColor() }]}>Remember Me</Text>
-                        </View>
-
-                        <Button
-                            variant="primary"
-                            onPress={handleSignIn}
-                            loading={isSubmitting || loading}
-                            disabled={isSubmitting || loading || !email || !password}
+                            accessible
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: rememberMe }}
                         >
-                            Sign In
-                        </Button>
+                            {rememberMe && <View style={styles.checkboxInner} />}
+                        </TouchableOpacity>
+                        <Text style={[styles.rememberMeText, { color: getTextColor() }]}>Remember Me</Text>
+                    </View>
 
-                        <View style={styles.signUpContainer}>
-                            <Text style={styles.signUpText}>Don't have an account? </Text>
-                            <TouchableOpacity
-                                onPress={() => navigation.navigate('SignUp')}
-                                disabled={isSubmitting || loading}
-                            >
-                                <Text style={styles.signUpLink}>Sign Up</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </Stack>
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                    <Button
+                        variant="primary"
+                        onPress={handleSignIn}
+                        loading={isSubmitting || loading}
+                        disabled={isSubmitting || loading || !email || !password}
+                    >
+                        Sign In
+                    </Button>
+
+                    <View style={styles.signUpContainer}>
+                        <Text style={styles.signUpText}>Don't have an account? </Text>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('SignUp')}
+                            disabled={isSubmitting || loading}
+                        >
+                            <Text style={styles.signUpLink}>Sign Up</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Stack>
+            </View>
+        </KeyboardAwareScrollView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',

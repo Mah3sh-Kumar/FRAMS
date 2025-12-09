@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, Text, TouchableOpacity } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { View, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
 import { useAuth, SignUpPayload } from '../context/AuthContext';
 import { checkEnrollmentNumberUnique } from '../lib/database';
 import { DEPARTMENTS, CLASS_LEVELS, BRANCHES } from '../lib/constants';
@@ -11,6 +10,9 @@ import Button from '../components/design-system/primitives/Button';
 import Input from '../components/design-system/primitives/Input';
 import { Stack } from '../components/design-system/layout';
 import { isValidEmail } from '../lib/validation';
+import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
+import EnhancedPicker from '../components/EnhancedPicker';
+import { getClasses, getBranches, getDepartments, ClassItem, BranchItem, DepartmentItem } from '../lib/organization';
 
 type Props = StackScreenProps<any, 'SignUp'>;
 
@@ -29,11 +31,18 @@ export default function SignUpScreen({ navigation }: Props) {
 
     // Student-specific
     const [enrollmentNumber, setEnrollmentNumber] = useState('');
-    const [classLevel, setClassLevel] = useState(CLASS_LEVELS[0].value);
-    const [branch, setBranch] = useState(BRANCHES[0]);
+    const [classLevel, setClassLevel] = useState('');
+    const [branch, setBranch] = useState('');
 
     // Teacher-specific
-    const [department, setDepartment] = useState(DEPARTMENTS[0]);
+    const [department, setDepartment] = useState('');
+
+    // Database-driven dropdown data
+    const [classes, setClasses] = useState<ClassItem[]>([]);
+    const [branches, setBranches] = useState<BranchItem[]>([]);
+    const [departments, setDepartments] = useState<DepartmentItem[]>([]);
+    const [loadingData, setLoadingData] = useState(true);
+    const [dataError, setDataError] = useState<string | null>(null);
 
     // UI state
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -41,6 +50,81 @@ export default function SignUpScreen({ navigation }: Props) {
 
     // Debounce timer ref for enrollment number validation
     const enrollmentCheckTimer = useRef<NodeJS.Timeout | null>(null);
+
+    // Fetch organizational data on mount
+    useEffect(() => {
+        fetchOrganizationalData();
+    }, []);
+
+    // Fetch branches when class level changes
+    useEffect(() => {
+        if (classLevel) {
+            fetchBranchesForClass(classLevel);
+        }
+    }, [classLevel]);
+
+    const fetchOrganizationalData = async () => {
+        setLoadingData(true);
+        setDataError(null);
+        try {
+            const [classesResult, departmentsResult] = await Promise.all([
+                getClasses(),
+                getDepartments(),
+            ]);
+
+            if (classesResult.error) {
+                throw new Error(classesResult.error);
+            }
+            if (departmentsResult.error) {
+                throw new Error(departmentsResult.error);
+            }
+
+            setClasses(classesResult.data || []);
+            setDepartments(departmentsResult.data || []);
+
+            // Set default values
+            if (classesResult.data && classesResult.data.length > 0) {
+                setClassLevel(classesResult.data[0].value);
+            }
+            if (departmentsResult.data && departmentsResult.data.length > 0) {
+                setDepartment(departmentsResult.data[0].name);
+            }
+        } catch (error: any) {
+            console.error('Error fetching organizational data:', error);
+            setDataError(error.message || 'Failed to load form data');
+            Alert.alert('Error', 'Failed to load form data. Please try again.');
+        } finally {
+            setLoadingData(false);
+        }
+    };
+
+    const fetchBranchesForClass = async (classValue: string) => {
+        try {
+            // Find the class ID from the value
+            const selectedClass = classes.find(c => c.value === classValue);
+            if (!selectedClass) {
+                setBranches([]);
+                return;
+            }
+
+            const branchesResult = await getBranches(selectedClass.id);
+            if (branchesResult.error) {
+                throw new Error(branchesResult.error);
+            }
+
+            setBranches(branchesResult.data || []);
+            
+            // Set default branch if available
+            if (branchesResult.data && branchesResult.data.length > 0) {
+                setBranch(branchesResult.data[0].name);
+            } else {
+                setBranch('');
+            }
+        } catch (error: any) {
+            console.error('Error fetching branches:', error);
+            setBranches([]);
+        }
+    };
 
     // Debounced enrollment number validation
     const checkEnrollmentDebounced = useCallback((value: string) => {
@@ -207,19 +291,23 @@ export default function SignUpScreen({ navigation }: Props) {
     }, [errors.enrollmentNumber, checkEnrollmentDebounced]);
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        <KeyboardAwareScrollView
+            contentContainerStyle={styles.scrollContent}
+            extraScrollHeight={20}
+            enableAutomaticScroll={true}
         >
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="always"
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={styles.content}>
+            <View style={styles.content}>
                     <Text style={[styles.title, { color: getTextColor() }]}>Create Account</Text>
                     <Text style={styles.subtitle}>Sign up to get started</Text>
+
+                    {dataError && (
+                        <View style={styles.errorContainer}>
+                            <Text style={styles.errorText}>{dataError}</Text>
+                            <TouchableOpacity onPress={fetchOrganizationalData}>
+                                <Text style={styles.retryText}>Retry</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     <Stack spacing="md">
                         {/* Role Selection */}
@@ -306,79 +394,45 @@ export default function SignUpScreen({ navigation }: Props) {
                                     label="Enrollment Number"
                                     value={enrollmentNumber}
                                     onChangeText={handleEnrollmentChange}
-                                    disabled={isSubmitting || authLoading}
+                                    disabled={isSubmitting || authLoading || loadingData}
                                     error={errors.enrollmentNumber}
                                     keyboardType="numeric"
                                 />
 
-                                <View>
-                                    <Text style={[styles.label, { color: getTextColor() }]}>Class Level</Text>
-                                    <View style={[styles.pickerContainer, { backgroundColor: getSurfaceColor() }]}>
-                                        <Picker
-                                            selectedValue={classLevel}
-                                            onValueChange={(value) => setClassLevel(value)}
-                                            enabled={!isSubmitting && !authLoading}
-                                        >
-                                            {CLASS_LEVELS.map((level) => (
-                                                <Picker.Item
-                                                    key={level.value}
-                                                    label={level.label}
-                                                    value={level.value}
-                                                />
-                                            ))}
-                                        </Picker>
-                                    </View>
-                                </View>
+                                <EnhancedPicker
+                                    label="Class Level"
+                                    value={classLevel}
+                                    items={classes.map(c => ({ label: c.name, value: c.value }))}
+                                    onValueChange={(value) => setClassLevel(value)}
+                                    disabled={isSubmitting || authLoading || loadingData}
+                                    testID="class-level-picker"
+                                />
 
                                 {classLevel.startsWith('grad_year') && (
-                                    <View>
-                                        <Text style={[styles.label, { color: getTextColor() }]}>Branch</Text>
-                                        <View style={[styles.pickerContainer, { backgroundColor: getSurfaceColor() }]}>
-                                            <Picker
-                                                selectedValue={branch}
-                                                onValueChange={(value) => setBranch(value)}
-                                                enabled={!isSubmitting && !authLoading}
-                                            >
-                                                {BRANCHES.map((b) => (
-                                                    <Picker.Item
-                                                        key={b}
-                                                        label={b}
-                                                        value={b}
-                                                    />
-                                                ))}
-                                            </Picker>
-                                        </View>
-                                        {errors.branch && (
-                                            <Text style={styles.errorText}>{errors.branch}</Text>
-                                        )}
-                                    </View>
+                                    <EnhancedPicker
+                                        label="Branch"
+                                        value={branch}
+                                        items={branches.map(b => ({ label: b.name, value: b.name }))}
+                                        onValueChange={(value) => setBranch(value)}
+                                        disabled={isSubmitting || authLoading || loadingData}
+                                        error={errors.branch}
+                                        testID="branch-picker"
+                                    />
                                 )}
                             </>
                         )}
 
                         {/* Teacher-Specific Fields */}
                         {role === 'teacher' && (
-                            <View>
-                                <Text style={[styles.label, { color: getTextColor() }]}>Department</Text>
-                                <View style={[styles.pickerContainer, { backgroundColor: getSurfaceColor() }]}>
-                                    <Picker
-                                        selectedValue={department}
-                                        onValueChange={(value) => setDepartment(value)}
-                                        enabled={!isSubmitting && !authLoading}
-                                    >
-                                        {DEPARTMENTS.map((dept) => (
-                                            <Picker.Item
-                                                key={dept}
-                                                label={dept}
-                                                value={dept}
-                                            />
-                                        ))}
-                                    </Picker>
-                                </View>
-                                {errors.department && (
-                                    <Text style={styles.errorText}>{errors.department}</Text>
-                                )}
-                            </View>
+                            <EnhancedPicker
+                                label="Department"
+                                value={department}
+                                items={departments.map(dept => ({ label: dept.name, value: dept.name }))}
+                                onValueChange={(value) => setDepartment(value)}
+                                disabled={isSubmitting || authLoading || loadingData}
+                                error={errors.department}
+                                testID="department-picker"
+                            />
                         )}
 
                         <Button
@@ -401,15 +455,11 @@ export default function SignUpScreen({ navigation }: Props) {
                         </View>
                     </Stack>
                 </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
     scrollContent: {
         flexGrow: 1,
         paddingVertical: 32,
@@ -464,19 +514,7 @@ const styles = StyleSheet.create({
     roleButtonTextActive: {
         color: '#6366F1',
     },
-    pickerContainer: {
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#D1D5DB',
-        marginBottom: 16,
-        overflow: 'hidden',
-    },
-    errorText: {
-        fontSize: 14,
-        color: '#EF4444',
-        marginTop: 4,
-        marginBottom: 8,
-    },
+
     signInContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
@@ -490,6 +528,25 @@ const styles = StyleSheet.create({
     signInLink: {
         fontSize: 16,
         color: '#6366F1',
+        fontWeight: '600',
+    },
+    errorContainer: {
+        backgroundColor: '#FEE2E2',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    errorText: {
+        color: '#DC2626',
+        fontSize: 14,
+        flex: 1,
+    },
+    retryText: {
+        color: '#6366F1',
+        fontSize: 14,
         fontWeight: '600',
     },
 });

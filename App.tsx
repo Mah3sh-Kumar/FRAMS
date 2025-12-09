@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { View, ActivityIndicator, Linking } from 'react-native';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
-import { paperTheme } from './lib/theme';
+import { paperTheme, paperDarkTheme } from './lib/theme';
 import { parseDeepLink } from './lib/deeplink';
 import type { NavigationContainerRef } from '@react-navigation/native';
 import { ThemeProvider, useTheme } from './lib/design-system/ThemeContext';
@@ -41,13 +41,14 @@ import MarksReviewManager from './screens/teacher/MarksReviewManager';
 
 // Admin Screens - Load immediately
 import UserManagement from './screens/admin/UserManagement';
+import OrganizationManager from './screens/admin/OrganizationManager';
 import ReportsScreen from './screens/admin/ReportsScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 function Navigation() {
   const { session, role, isVerified, loading } = useAuth();
-  const { setRole: setThemeRole } = useTheme();
+  const { setRole: setThemeRole, mode } = useTheme();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   // Sync role from AuthContext to ThemeContext
@@ -104,15 +105,15 @@ function Navigation() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: mode === 'dark' ? '#0f172a' : '#f5f5f5' }}>
+        <ActivityIndicator size="large" color={mode === 'dark' ? '#ffffff' : '#000000'} />
       </View>
     );
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator>
+    <NavigationContainer ref={navigationRef} theme={mode === 'dark' ? { dark: true, colors: { primary: '#6366f1', background: '#0f172a', card: '#1e293b', text: '#f1f5f9', border: '#334155', notification: '#ef4444' } } : undefined}>
+      <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: mode === 'dark' ? '#1e293b' : '#ffffff' }, headerTintColor: mode === 'dark' ? '#f1f5f9' : '#000000' }}>
         {!session || !session.user ? (
           // Auth Stack - Unauthenticated Users
           <>
@@ -157,16 +158,16 @@ function Navigation() {
         ) : !isVerified && role !== 'admin' ? (
           // Authenticated but Unverified Users (except admins)
           <>
-            <Stack.Screen 
-              name="Unverified" 
-              component={UnverifiedScreen} 
+            <Stack.Screen
+              name="Unverified"
+              component={UnverifiedScreen}
               options={{ headerShown: false }}
             />
           </>
         ) : (
           // Authenticated and Verified Users - Role-based Stacks
           <>
-            <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ headerShown: false }} />
 
             {/* Common Screens */}
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
@@ -197,6 +198,7 @@ function Navigation() {
             {role === 'admin' && (
               <>
                 <Stack.Screen name="UserManagement" component={UserManagement} />
+                <Stack.Screen name="OrganizationManager" component={OrganizationManager} options={{ title: 'Organization Manager' }} />
                 <Stack.Screen name="Reports" component={ReportsScreen} />
               </>
             )}
@@ -207,17 +209,26 @@ function Navigation() {
   );
 }
 
+function ThemedApp() {
+  const { mode } = useTheme();
+  const theme = mode === 'dark' ? paperDarkTheme : paperTheme;
+
+  return (
+    <PaperProvider theme={theme}>
+      <ToastProvider>
+        <AuthProvider>
+          <Navigation />
+        </AuthProvider>
+      </ToastProvider>
+    </PaperProvider>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <PaperProvider theme={paperTheme}>
-          <ToastProvider>
-            <AuthProvider>
-              <Navigation />
-            </AuthProvider>
-          </ToastProvider>
-        </PaperProvider>
+        <ThemedApp />
       </ThemeProvider>
     </ErrorBoundary>
   );

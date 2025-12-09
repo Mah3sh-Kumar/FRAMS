@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { colors, spacing, typography } from '../lib/theme';
+import { fontWeights } from '../lib/design-system/tokens/typography';
 
 interface PasswordStrengthIndicatorProps {
     password: string;
@@ -13,7 +14,7 @@ export function calculatePasswordStrength(password: string): {
     color: string;
 } {
     if (!password) {
-        return { strength: 0, label: '', color: colors.text.disabled };
+        return { strength: 0, label: '', color: colors.theme.light.textSecondary };
     }
 
     let strength = 0;
@@ -62,7 +63,7 @@ export default function PasswordStrengthIndicator({ password }: PasswordStrength
                             styles.bar,
                             {
                                 backgroundColor:
-                                    index <= strength ? color : colors.text.disabled,
+                                    index <= strength ? color : colors.theme.light.textSecondary,
                             },
                         ]}
                     />
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
         borderRadius: 2,
     },
     label: {
-        fontSize: typography.fontSize.xs,
-        fontWeight: typography.fontWeight.medium,
+        fontSize: typography.caption.fontSize,
+        fontWeight: fontWeights.medium,
     },
 });

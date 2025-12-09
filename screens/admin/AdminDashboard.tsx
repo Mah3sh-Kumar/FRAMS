@@ -1,65 +1,61 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../lib/design-system/ThemeContext';
-import Card from '../../components/design-system/primitives/Card';
-import { Stack } from '../../components/design-system/layout';
-import GradientBackground from '../../components/GradientBackground';
-import GlassmorphicWidget from '../../components/design-system/analytics/GlassmorphicWidget';
-import ProgressRing from '../../components/design-system/analytics/ProgressRing';
+import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 
 export default function AdminDashboard() {
     const navigation = useNavigation();
+    const { session } = useAuth();
     const { tokens } = useTheme();
+    const [adminName, setAdminName] = useState<string>('Admin');
     const [stats, setStats] = useState({
         totalUsers: 0,
         totalStudents: 0,
         totalTeachers: 0,
-        totalAdmins: 0,
         unverifiedUsers: 0,
-        attendanceRate: 0,
     });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        loadAdminName();
         fetchStats();
     }, []);
 
+    const loadAdminName = async () => {
+        if (!session?.user?.id) return;
+
+        try {
+            const { data } = await supabase
+                .from('users')
+                .select('full_name')
+                .eq('id', session.user.id)
+                .single();
+
+            if (data?.full_name) {
+                const firstName = data.full_name.split(' ')[0];
+                setAdminName(firstName);
+            }
+        } catch (err) {
+            console.error('Error loading admin name:', err);
+        }
+    };
+
     const fetchStats = async () => {
         try {
-            setLoading(true);
-            
-            // Fetch user counts
             const { count: totalUsers } = await supabase.from('users').select('*', { count: 'exact', head: true });
             const { count: totalStudents } = await supabase.from('students').select('*', { count: 'exact', head: true });
             const { count: totalTeachers } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
-            const { count: totalAdmins } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin');
             const { count: unverifiedUsers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_verified', false);
-
-            // Calculate attendance rate for today
-            const today = new Date().toISOString().split('T')[0];
-            const { count: presentCount } = await supabase
-                .from('attendance')
-                .select('*', { count: 'exact', head: true })
-                .eq('date', today)
-                .eq('status', 'present');
-            
-            const { count: totalAttendance } = await supabase
-                .from('attendance')
-                .select('*', { count: 'exact', head: true })
-                .eq('date', today);
-
-            const attendanceRate = totalAttendance ? (presentCount || 0) / totalAttendance * 100 : 0;
 
             setStats({
                 totalUsers: totalUsers || 0,
                 totalStudents: totalStudents || 0,
                 totalTeachers: totalTeachers || 0,
-                totalAdmins: totalAdmins || 0,
                 unverifiedUsers: unverifiedUsers || 0,
-                attendanceRate,
             });
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -68,224 +64,312 @@ export default function AdminDashboard() {
         }
     };
 
-    const features = [
-        {
-            title: 'User Management',
-            description: 'Manage users and roles',
-            icon: 'settings-outline' as const,
-            color: tokens.colors.roles.admin.main,
-            route: 'UserManagement',
-        },
-        {
-            title: 'View Reports',
-            description: 'Analytics and insights',
-            icon: 'bar-chart-outline' as const,
-            color: tokens.colors.success.main,
-            route: 'Reports',
-        },
-    ];
-
-    const styles = StyleSheet.create({
-        container: {
-            flex: 1,
-        },
-        header: {
-            padding: tokens.spacing.lg,
-            paddingTop: tokens.spacing.xl,
-        },
-        title: {
-            fontSize: tokens.typography.h1.fontSize,
-            fontWeight: tokens.typography.h1.fontWeight,
-            color: tokens.colors.neutral.white,
-            marginBottom: tokens.spacing.xs,
-        },
-        subtitle: {
-            fontSize: tokens.typography.body.fontSize,
-            color: tokens.colors.neutral.white,
-        },
-        sectionHeader: {
-            fontSize: tokens.typography.h2.fontSize,
-            fontWeight: tokens.typography.h2.fontWeight,
-            color: tokens.colors.neutral.white,
-            marginBottom: tokens.spacing.md,
-            marginTop: tokens.spacing.lg,
-        },
-        divider: {
-            height: 1,
-            backgroundColor: tokens.colors.neutral.gray300,
-            marginVertical: tokens.spacing.lg,
-        },
-        featureCard: {
-            marginBottom: tokens.spacing.md,
-        },
-        cardContent: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: tokens.spacing.md,
-        },
-        iconContainer: {
-            width: 48,
-            height: 48,
-            borderRadius: tokens.borders.radius.medium,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginRight: tokens.spacing.md,
-        },
-        textContainer: {
-            flex: 1,
-        },
-        featureTitle: {
-            fontSize: tokens.typography.h3.fontSize,
-            fontWeight: tokens.typography.h3.fontWeight,
-            color: tokens.colors.neutral.gray900,
-            marginBottom: tokens.spacing.xs / 2,
-        },
-        featureDescription: {
-            fontSize: tokens.typography.caption.fontSize,
-            color: tokens.colors.neutral.gray700,
-        },
-        statsGrid: {
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: tokens.spacing.md,
-        },
-        statWidget: {
-            flex: 1,
-            minWidth: '45%',
-        },
-        statContent: {
-            alignItems: 'center',
-        },
-        statValue: {
-            fontSize: tokens.typography.display.fontSize,
-            fontWeight: tokens.typography.display.fontWeight,
-            color: tokens.colors.neutral.gray900,
-            marginTop: tokens.spacing.sm,
-        },
-        statLabel: {
-            fontSize: tokens.typography.caption.fontSize,
-            color: tokens.colors.neutral.gray800,
-            fontWeight: '600',
-            marginTop: tokens.spacing.xs,
-            textAlign: 'center',
-        },
-        progressWidget: {
-            alignItems: 'center',
-            paddingVertical: tokens.spacing.md,
-        },
-        progressLabel: {
-            fontSize: tokens.typography.h3.fontSize,
-            fontWeight: tokens.typography.h3.fontWeight,
-            color: tokens.colors.neutral.gray900,
-            marginBottom: tokens.spacing.md,
-        },
-    });
+    if (loading) {
+        return (
+            <View style={[styles.loadingContainer, { backgroundColor: '#F9FAFB' }]}>
+                <LoadingSpinner size="large" />
+            </View>
+        );
+    }
 
     return (
-        <GradientBackground variant="admin">
-            <ScrollView style={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Admin Dashboard</Text>
-                    <Text style={styles.subtitle}>System overview and management</Text>
+        <View style={styles.mainContainer}>
+            <StatusBar barStyle="light-content" backgroundColor={tokens.colors.roles.admin.main} />
+            {/* Purple Header Section */}
+            <View style={[styles.welcomeSection, { backgroundColor: tokens.colors.roles.admin.main }]}>
+                <View style={styles.headerRow}>
+                    <View style={styles.welcomeContent}>
+                        <Text style={styles.welcomeTitle}>Welcome Back, {adminName}!</Text>
+                        <Text style={styles.welcomeSubtitle}>System overview and management</Text>
+                    </View>
+                    <View style={styles.quickActions}>
+                        <TouchableOpacity
+                            style={styles.iconButton}
+                            onPress={() => navigation.navigate('Notifications' as never)}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.iconButton}
+                            onPress={() => navigation.navigate('Profile' as never)}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="person-circle-outline" size={22} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.iconButton}
+                            onPress={() => navigation.navigate('Settings' as never)}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+
+            {/* Scrollable Content Area */}
+            <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+                {/* Quick Access Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Quick Actions</Text>
+                    
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('UserManagement' as never)}
+                        activeOpacity={0.7}
+                        style={styles.cardWrapper}
+                    >
+                        <View style={[styles.taskCard, { borderLeftColor: tokens.colors.roles.admin.main }]}>
+                            <View style={[styles.iconContainer, { backgroundColor: `${tokens.colors.roles.admin.main}15` }]}>
+                                <Ionicons name="settings" size={28} color={tokens.colors.roles.admin.main} />
+                            </View>
+                            <View style={styles.textContainer}>
+                                <Text style={styles.taskTitle}>User Management</Text>
+                                <Text style={styles.taskDescription}>Manage users, roles, and permissions.</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('OrganizationManager' as never)}
+                        activeOpacity={0.7}
+                        style={styles.cardWrapper}
+                    >
+                        <View style={[styles.taskCard, { borderLeftColor: tokens.colors.primary.main }]}>
+                            <View style={[styles.iconContainer, { backgroundColor: `${tokens.colors.primary.main}15` }]}>
+                                <Ionicons name="business" size={28} color={tokens.colors.primary.main} />
+                            </View>
+                            <View style={styles.textContainer}>
+                                <Text style={styles.taskTitle}>Organization Manager</Text>
+                                <Text style={styles.taskDescription}>Manage classes, branches, and departments.</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('Reports' as never)}
+                        activeOpacity={0.7}
+                        style={styles.cardWrapper}
+                    >
+                        <View style={[styles.taskCard, { borderLeftColor: tokens.colors.success.main }]}>
+                            <View style={[styles.iconContainer, { backgroundColor: `${tokens.colors.success.main}15` }]}>
+                                <Ionicons name="bar-chart" size={28} color={tokens.colors.success.main} />
+                            </View>
+                            <View style={styles.textContainer}>
+                                <Text style={styles.taskTitle}>View Reports</Text>
+                                <Text style={styles.taskDescription}>Analytics and system insights.</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
-                <Stack spacing="lg" style={{ padding: tokens.spacing.md }}>
-                    {/* Quick Actions Section */}
-                    <View>
-                        <Text style={styles.sectionHeader}>Quick Actions</Text>
-                        {features.map((feature, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                onPress={() => navigation.navigate(feature.route as never)}
-                                activeOpacity={0.7}
-                            >
-                                <Card variant="glassmorphic" style={styles.featureCard}>
-                                    <View style={styles.cardContent}>
-                                        <View style={[styles.iconContainer, { backgroundColor: `${feature.color}20` }]}>
-                                            <Ionicons name={feature.icon} size={24} color={feature.color} />
-                                        </View>
-                                        <View style={styles.textContainer}>
-                                            <Text style={styles.featureTitle}>{feature.title}</Text>
-                                            <Text style={styles.featureDescription}>{feature.description}</Text>
-                                        </View>
-                                        <Ionicons name="chevron-forward" size={20} color={tokens.colors.neutral.gray400} />
-                                    </View>
-                                </Card>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    {/* System Statistics Section */}
-                    <View>
-                        <Text style={styles.sectionHeader}>System Statistics</Text>
-                        <View style={styles.statsGrid}>
-                            <GlassmorphicWidget style={styles.statWidget} elevation="md">
-                                <View style={styles.statContent}>
-                                    <Ionicons name="people" size={32} color={tokens.colors.info.main} />
-                                    <Text style={styles.statValue}>{loading ? '--' : stats.totalUsers}</Text>
-                                    <Text style={styles.statLabel}>Total Users</Text>
+                {/* System Statistics Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>System Statistics</Text>
+                    <View style={styles.statsGrid}>
+                        <View style={styles.statCard}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.info.main}15` }]}>
+                                    <Ionicons name="people" size={20} color={tokens.colors.info.main} />
                                 </View>
-                            </GlassmorphicWidget>
+                                <Text style={styles.statLabel}>Total Users</Text>
+                            </View>
+                            <Text style={styles.statValue}>{stats.totalUsers}</Text>
+                        </View>
 
-                            <GlassmorphicWidget style={styles.statWidget} elevation="md">
-                                <View style={styles.statContent}>
-                                    <Ionicons name="school" size={32} color={tokens.colors.primary.main} />
-                                    <Text style={styles.statValue}>{loading ? '--' : stats.totalStudents}</Text>
-                                    <Text style={styles.statLabel}>Students</Text>
+                        <View style={styles.statCard}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.primary.main}15` }]}>
+                                    <Ionicons name="school" size={20} color={tokens.colors.primary.main} />
                                 </View>
-                            </GlassmorphicWidget>
-
-                            <GlassmorphicWidget style={styles.statWidget} elevation="md">
-                                <View style={styles.statContent}>
-                                    <Ionicons name="briefcase" size={32} color={tokens.colors.success.main} />
-                                    <Text style={styles.statValue}>{loading ? '--' : stats.totalTeachers}</Text>
-                                    <Text style={styles.statLabel}>Teachers</Text>
-                                </View>
-                            </GlassmorphicWidget>
-
-                            <GlassmorphicWidget style={styles.statWidget} elevation="md">
-                                <View style={styles.statContent}>
-                                    <Ionicons name="shield-checkmark" size={32} color={tokens.colors.roles.admin.main} />
-                                    <Text style={styles.statValue}>{loading ? '--' : stats.totalAdmins}</Text>
-                                    <Text style={styles.statLabel}>Admins</Text>
-                                </View>
-                            </GlassmorphicWidget>
+                                <Text style={styles.statLabel}>Students</Text>
+                            </View>
+                            <Text style={styles.statValue}>{stats.totalStudents}</Text>
                         </View>
                     </View>
 
-                    <View style={styles.divider} />
-
-                    {/* Metrics Section */}
-                    <View>
-                        <Text style={styles.sectionHeader}>Key Metrics</Text>
-                        <View style={styles.statsGrid}>
-                            <GlassmorphicWidget style={styles.statWidget} elevation="lg">
-                                <View style={styles.progressWidget}>
-                                    <Text style={styles.progressLabel}>Today's Attendance</Text>
-                                    <ProgressRing
-                                        progress={loading ? 0 : stats.attendanceRate}
-                                        size={100}
-                                        strokeWidth={10}
-                                        gradientColors={tokens.colors.success.gradient as [string, string]}
-                                    />
+                    <View style={[styles.statsGrid, { marginTop: 16 }]}>
+                        <View style={styles.statCard}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.success.main}15` }]}>
+                                    <Ionicons name="briefcase" size={20} color={tokens.colors.success.main} />
                                 </View>
-                            </GlassmorphicWidget>
+                                <Text style={styles.statLabel}>Teachers</Text>
+                            </View>
+                            <Text style={styles.statValue}>{stats.totalTeachers}</Text>
+                        </View>
 
-                            <GlassmorphicWidget style={styles.statWidget} elevation="lg">
-                                <View style={styles.statContent}>
-                                    <Ionicons name="alert-circle" size={32} color={tokens.colors.warning.main} />
-                                    <Text style={styles.statValue}>{loading ? '--' : stats.unverifiedUsers}</Text>
-                                    <Text style={styles.statLabel}>Pending Verification</Text>
+                        <View style={styles.statCard}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.warning.main}15` }]}>
+                                    <Ionicons name="alert-circle" size={20} color={tokens.colors.warning.main} />
                                 </View>
-                            </GlassmorphicWidget>
+                                <Text style={styles.statLabel}>Pending Verification</Text>
+                            </View>
+                            <Text style={styles.statValue}>{stats.unverifiedUsers}</Text>
                         </View>
                     </View>
-                </Stack>
+                </View>
             </ScrollView>
-        </GradientBackground>
+        </View>
     );
 }
 
-
+const styles = StyleSheet.create({
+    mainContainer: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    scrollContainer: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+    },
+    welcomeSection: {
+        paddingHorizontal: 24,
+        paddingTop: 48,
+        paddingBottom: 32,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    welcomeContent: {
+        flex: 1,
+        marginRight: 16,
+    },
+    welcomeTitle: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        marginBottom: 8,
+        lineHeight: 34,
+    },
+    welcomeSubtitle: {
+        fontSize: 16,
+        color: '#FFFFFF',
+        opacity: 0.95,
+        lineHeight: 22,
+    },
+    quickActions: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 4,
+    },
+    iconButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    section: {
+        paddingHorizontal: 24,
+        marginTop: 24,
+        marginBottom: 32,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#374151',
+        marginBottom: 16,
+    },
+    cardWrapper: {
+        marginBottom: 16,
+    },
+    taskCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        borderLeftWidth: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    textContainer: {
+        flex: 1,
+    },
+    taskTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#1F2937',
+        marginBottom: 4,
+    },
+    taskDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        lineHeight: 20,
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        minHeight: 128,
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    statHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    statIconContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statLabel: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#6B7280',
+        flex: 1,
+    },
+    statValue: {
+        fontSize: 36,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+});
