@@ -1,11 +1,49 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card } from '../components/design-system/primitives';
-import { tokens } from '../lib/design-system/tokens';
+import { useTheme } from '../lib/design-system/ThemeContext';
 
 export default function TermsScreen() {
+    const { tokens, getBackgroundColor, getTextColor, getTextSecondaryColor } = useTheme();
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        contentContainer: {
+            padding: tokens.spacing.md,
+        },
+        cardContent: {
+            padding: tokens.spacing.lg,
+        },
+        title: {
+            marginBottom: tokens.spacing.md,
+            fontSize: tokens.typography.h1.fontSize,
+            fontWeight: tokens.typography.h1.fontWeight,
+            lineHeight: tokens.typography.h1.lineHeight,
+            color: getTextColor(),
+        },
+        subtitle: {
+            marginTop: tokens.spacing.lg,
+            marginBottom: tokens.spacing.sm,
+            fontSize: tokens.typography.h3.fontSize,
+            fontWeight: tokens.typography.h3.fontWeight,
+            lineHeight: tokens.typography.h3.lineHeight,
+            color: getTextColor(),
+        },
+        paragraph: {
+            marginBottom: tokens.spacing.md,
+            fontSize: tokens.typography.body.fontSize,
+            lineHeight: tokens.typography.body.lineHeight,
+            color: getTextSecondaryColor(),
+        },
+    });
+
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <ScrollView
+            style={[styles.container, { backgroundColor: getBackgroundColor() }]}
+            contentContainerStyle={styles.contentContainer}
+        >
             <Card>
                 <View style={styles.cardContent}>
                     <Text style={styles.title}>Terms of Service</Text>
@@ -41,37 +79,3 @@ export default function TermsScreen() {
         </ScrollView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: tokens.colors.theme.light.background,
-    },
-    contentContainer: {
-        padding: tokens.spacing.md,
-    },
-    cardContent: {
-        padding: tokens.spacing.lg,
-    },
-    title: {
-        marginBottom: tokens.spacing.md,
-        fontSize: tokens.typography.h1.fontSize,
-        fontWeight: tokens.typography.h1.fontWeight,
-        lineHeight: tokens.typography.h1.lineHeight,
-        color: tokens.colors.theme.light.text,
-    },
-    subtitle: {
-        marginTop: tokens.spacing.lg,
-        marginBottom: tokens.spacing.sm,
-        fontSize: tokens.typography.h3.fontSize,
-        fontWeight: tokens.typography.h3.fontWeight,
-        lineHeight: tokens.typography.h3.lineHeight,
-        color: tokens.colors.theme.light.text,
-    },
-    paragraph: {
-        marginBottom: tokens.spacing.md,
-        fontSize: tokens.typography.body.fontSize,
-        lineHeight: tokens.typography.body.lineHeight,
-        color: tokens.colors.theme.light.textSecondary,
-    },
-});

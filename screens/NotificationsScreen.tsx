@@ -11,6 +11,7 @@ import {
     type Notification,
 } from '../lib/notifications';
 import { tokens } from '../lib/design-system/tokens';
+import { useTheme } from '../lib/design-system/ThemeContext';
 import EmptyState from '../components/EmptyState';
 import LoadingSpinner from '../components/LoadingSpinner';
 import type { StackScreenProps } from '@react-navigation/stack';
@@ -19,6 +20,7 @@ type Props = StackScreenProps<any, 'Notifications'>;
 
 export default function NotificationsScreen({ navigation }: Props) {
     const { session } = useAuth();
+    const { getBackgroundColor, getSurfaceColor, getTextColor, getTextSecondaryColor, getBorderColor } = useTheme();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -128,7 +130,12 @@ export default function NotificationsScreen({ navigation }: Props) {
         <Card
             style={[
                 styles.notificationCard,
-                !item.read && styles.unreadCard,
+                { backgroundColor: getSurfaceColor() },
+                !item.read && {
+                    backgroundColor: tokens.colors.primary.light + '10',
+                    borderLeftWidth: 4,
+                    borderLeftColor: tokens.colors.primary.main,
+                },
             ]}
             onPress={() => handleMarkAsRead(item.id)}
         >
@@ -143,12 +150,12 @@ export default function NotificationsScreen({ navigation }: Props) {
                 </View>
                 <View style={styles.textContainer}>
                     <View style={styles.titleRow}>
-                        <Text style={styles.title}>{item.title}</Text>
+                        <Text style={[styles.title, { color: getTextColor() }]}>{item.title}</Text>
                         {!item.read && (
                             <View style={styles.unreadDot} />
                         )}
                     </View>
-                    <Text style={styles.message}>{item.message}</Text>
+                    <Text style={[styles.message, { color: getTextSecondaryColor() }]}>{item.message}</Text>
                     <View style={styles.footer}>
                         <Text style={styles.date}>{formatDate(item.created_at)}</Text>
                         <IconButton
@@ -170,9 +177,9 @@ export default function NotificationsScreen({ navigation }: Props) {
 
     if (notifications.length === 0) {
         return (
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <Title>Notifications</Title>
+            <View style={[styles.container, { backgroundColor: getBackgroundColor() }]}>
+                <View style={[styles.header, { backgroundColor: getSurfaceColor() }]}>
+                    <Title style={{ color: getTextColor() }}>Notifications</Title>
                 </View>
                 <EmptyState
                     icon="bell-outline"
@@ -184,9 +191,9 @@ export default function NotificationsScreen({ navigation }: Props) {
     }
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Title>Notifications</Title>
+        <View style={[styles.container, { backgroundColor: getBackgroundColor() }]}>
+            <View style={[styles.header, { backgroundColor: getSurfaceColor() }]}>
+                <Title style={{ color: getTextColor() }}>Notifications</Title>
                 {notifications.length > 0 && (
                     <Button
                         mode="text"
@@ -214,14 +221,12 @@ export default function NotificationsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: tokens.colors.theme.light.background,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: tokens.spacing.md,
-        backgroundColor: tokens.colors.theme.light.surface,
         ...tokens.shadows.sm,
     },
     listContent: {
@@ -231,11 +236,6 @@ const styles = StyleSheet.create({
         marginBottom: tokens.spacing.md,
         borderRadius: tokens.borders.medium,
         ...tokens.shadows.sm,
-    },
-    unreadCard: {
-        backgroundColor: tokens.colors.primary.light + '10',
-        borderLeftWidth: 4,
-        borderLeftColor: tokens.colors.primary.main,
     },
     cardContent: {
         flexDirection: 'row',
@@ -263,7 +263,6 @@ const styles = StyleSheet.create({
         fontSize: tokens.typography.h3.fontSize,
         fontWeight: tokens.typography.h3.fontWeight,
         lineHeight: tokens.typography.h3.lineHeight,
-        color: tokens.colors.theme.light.text,
         flex: 1,
     },
     unreadDot: {
@@ -276,7 +275,6 @@ const styles = StyleSheet.create({
     message: {
         fontSize: tokens.typography.body.fontSize,
         lineHeight: tokens.typography.body.lineHeight,
-        color: tokens.colors.theme.light.textSecondary,
         marginBottom: tokens.spacing.xs,
     },
     date: {

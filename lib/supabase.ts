@@ -1,13 +1,16 @@
 import 'react-native-url-polyfill/auto';
 import * as SecureStore from 'expo-secure-store';
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
-// Use EXPO_PUBLIC_ variables which are automatically loaded by Expo
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// Try to get from process.env first (local dev), then from app.json extra config (production builds)
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('❌ Supabase credentials are missing! Check your .env file.');
+  console.error('❌ Supabase credentials are missing! Check your .env file or app.json extra config.');
+  console.log('SUPABASE_URL:', SUPABASE_URL ? 'Present' : 'Missing');
+  console.log('SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? 'Present' : 'Missing');
 }
 
 const ExpoSecureStoreAdapter = {

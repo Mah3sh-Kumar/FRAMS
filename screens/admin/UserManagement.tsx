@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, Alert, FlatList, ScrollView, TouchableOpacity, Modal, Text } from 'react-native';
 import { SegmentedButtons } from 'react-native-paper';
 import { supabase } from '../../lib/supabase';
@@ -12,10 +12,12 @@ import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinn
 import ConfirmDialog from '../../components/ConfirmDialog';
 import EmptyState from '../../components/EmptyState';
 import GradientBackground from '../../components/GradientBackground';
-import { Picker } from '@react-native-picker/picker';
 import { DEPARTMENTS, CLASS_LEVELS, BRANCHES } from '../../lib/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { exportCSV } from '../../lib/csvExport';
+import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
+import EnhancedPicker from '../../components/EnhancedPicker';
+import { getClasses, getBranches, getDepartments, ClassItem, BranchItem, DepartmentItem } from '../../lib/organization';
 
 type UserData = {
     id: string;
@@ -58,15 +60,117 @@ export default function UserManagement() {
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
-    const [newUserDepartment, setNewUserDepartment] = useState(DEPARTMENTS[0]);
+    const [newUserDepartment, setNewUserDepartment] = useState('');
     const [newUserEnrollment, setNewUserEnrollment] = useState('');
-    const [newUserClassLevel, setNewUserClassLevel] = useState(CLASS_LEVELS[0].value);
-    const [newUserBranch, setNewUserBranch] = useState(BRANCHES[0]);
+    const [newUserClassLevel, setNewUserClassLevel] = useState('');
+    const [newUserBranch, setNewUserBranch] = useState('');
     const [creating, setCreating] = useState(false);
+
+    // Database-driven dropdown data
+    const [classes, setClasses] = useState<ClassItem[]>([]);
+    const [branches, setBranches] = useState<BranchItem[]>([]);
+    const [editBranches, setEditBranches] = useState<BranchItem[]>([]);
+    const [departments, setDepartments] = useState<DepartmentItem[]>([]);
+    const [loadingData, setLoadingData] = useState(true);
+    const [dataError, setDataError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchUsers();
+        fetchOrganizationalData();
     }, []);
+
+    // Fetch branches when new user class level changes
+    useEffect(() => {
+        if (newUserClassLevel) {
+            fetchBranchesForClass(newUserClassLevel, false);
+        }
+    }, [newUserClassLevel]);
+
+    // Fetch branches when edit user class level changes
+    useEffect(() => {
+        if (editClassLevel) {
+            fetchBranchesForClass(editClassLevel, true);
+        }
+    }, [editClassLevel]);
+
+    const fetchOrganizationalData = async () => {
+        setLoadingData(true);
+        setDataError(null);
+        try {
+            const [classesResult, departmentsResult] = await Promise.all([
+                getClasses(),
+                getDepartments(),
+            ]);
+
+            if (classesResult.error) {
+                throw new Error(classesResult.error);
+            }
+            if (departmentsResult.error) {
+                throw new Error(departmentsResult.error);
+            }
+
+            setClasses(classesResult.data || []);
+            setDepartments(departmentsResult.data || []);
+
+            // Set default values
+            if (classesResult.data && classesResult.data.length > 0) {
+                setNewUserClassLevel(classesResult.data[0].value);
+            }
+            if (departmentsResult.data && departmentsResult.data.length > 0) {
+                setNewUserDepartment(departmentsResult.data[0].name);
+            }
+        } catch (error: any) {
+            console.error('Error fetching organizational data:', error);
+            setDataError(error.message || 'Failed to load form data');
+        } finally {
+            setLoadingData(false);
+        }
+    };
+
+    const fetchBranchesForClass = async (classValue: string, isEdit: boolean) => {
+        try {
+            // Find the class ID from the value
+            const selectedClass = classes.find(c => c.value === classValue);
+            if (!selectedClass) {
+                if (isEdit) {
+                    setEditBranches([]);
+                } else {
+                    setBranches([]);
+                }
+                return;
+            }
+
+            const branchesResult = await getBranches(selectedClass.id);
+            if (branchesResult.error) {
+                throw new Error(branchesResult.error);
+            }
+
+            if (isEdit) {
+                setEditBranches(branchesResult.data || []);
+                // Set default branch if available
+                if (branchesResult.data && branchesResult.data.length > 0) {
+                    setEditBranch(branchesResult.data[0].name);
+                } else {
+                    setEditBranch('');
+                }
+            } else {
+                setBranches(branchesResult.data || []);
+                // Set default branch if available
+                if (branchesResult.data && branchesResult.data.length > 0) {
+                    setNewUserBranch(branchesResult.data[0].name);
+                } else {
+                    setNewUserBranch('');
+                }
+            }
+        } catch (error: any) {
+            console.error('Error fetching branches:', error);
+            if (isEdit) {
+                setEditBranches([]);
+            } else {
+                setBranches([]);
+            }
+        }
+    };
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -146,10 +250,10 @@ export default function UserManagement() {
         setSelectedUser(user);
         setEditName(user.full_name || '');
         setEditRole(user.role);
-        setEditDepartment(user.department || DEPARTMENTS[0]);
+        setEditDepartment(user.department || (departments.length > 0 ? departments[0].name : ''));
         setEditEnrollment(user.enrollment_number || '');
-        setEditClassLevel(user.class_level || CLASS_LEVELS[0].value);
-        setEditBranch(user.branch || BRANCHES[0]);
+        setEditClassLevel(user.class_level || (classes.length > 0 ? classes[0].value : ''));
+        setEditBranch(user.branch || '');
         setVisible(true);
     };
 
@@ -301,10 +405,10 @@ export default function UserManagement() {
         setNewUserEmail('');
         setNewUserPassword('');
         setNewUserRole('student');
-        setNewUserDepartment(DEPARTMENTS[0]);
+        setNewUserDepartment(departments.length > 0 ? departments[0].name : '');
         setNewUserEnrollment('');
-        setNewUserClassLevel(CLASS_LEVELS[0].value);
-        setNewUserBranch(BRANCHES[0]);
+        setNewUserClassLevel(classes.length > 0 ? classes[0].value : '');
+        setNewUserBranch('');
     };
 
     const handleExportUsers = async () => {
@@ -363,7 +467,7 @@ export default function UserManagement() {
 
     const { tokens, getTextColor, getTextSecondaryColor, getSurfaceColor } = useTheme();
 
-    const styles = StyleSheet.create({
+    const styles = useMemo(() => StyleSheet.create({
         container: { flex: 1 },
         header: { 
             flexDirection: 'row', 
@@ -519,27 +623,14 @@ export default function UserManagement() {
             fontWeight: tokens.typography.h2.fontWeight,
             marginBottom: tokens.spacing.md,
         },
-        pickerContainer: { 
-            borderRadius: tokens.borders.radius.medium, 
-            borderWidth: 1, 
-            borderColor: tokens.colors.neutral.gray300, 
-            marginBottom: tokens.spacing.md,
-        },
-        label: { 
-            fontSize: tokens.typography.body.fontSize, 
-            fontWeight: '600', 
-            marginBottom: tokens.spacing.sm, 
-            marginTop: tokens.spacing.sm, 
-            paddingHorizontal: tokens.spacing.sm,
-            color: getTextColor(),
-        },
+
         modalActions: { 
             flexDirection: 'row', 
             justifyContent: 'flex-end', 
             marginTop: tokens.spacing.md, 
             gap: tokens.spacing.sm,
         },
-    });
+    }), [tokens]);
 
     const renderUserItem = ({ item }: { item: UserData }) => (
         <Card variant="glassmorphic" style={styles.card}>
@@ -664,6 +755,20 @@ export default function UserManagement() {
                 </GlassmorphicWidget>
             </ScrollView>
 
+            {/* Error Message */}
+            {dataError && (
+                <View style={{ paddingHorizontal: tokens.spacing.md, marginBottom: tokens.spacing.sm }}>
+                    <Card variant="glassmorphic" style={{ backgroundColor: tokens.colors.error.light }}>
+                        <View style={{ padding: tokens.spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ color: tokens.colors.error.main, flex: 1 }}>{dataError}</Text>
+                            <TouchableOpacity onPress={fetchOrganizationalData}>
+                                <Text style={{ color: tokens.colors.primary.main, fontWeight: '600' }}>Retry</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Card>
+                </View>
+            )}
+
             {/* Search Bar */}
             <View style={styles.searchContainer}>
                 <Input
@@ -716,7 +821,10 @@ export default function UserManagement() {
             <Modal visible={visible} onRequestClose={() => setVisible(false)} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modal, { backgroundColor: getSurfaceColor() }]}>
-                        <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
+                        <KeyboardAwareScrollView 
+                            contentContainerStyle={{ padding: tokens.spacing.md }}
+                            extraScrollHeight={30}
+                        >
                             <Text style={[styles.modalTitle, { color: getTextColor() }]}>Edit User</Text>
                             
                             <Input 
@@ -725,24 +833,27 @@ export default function UserManagement() {
                                 onChangeText={setEditName} 
                             />
 
-                        <View style={styles.pickerContainer}>
-                            <Text style={styles.label}>Role</Text>
-                            <Picker selectedValue={editRole} onValueChange={(value) => setEditRole(value as any)}>
-                                <Picker.Item label="Student" value="student" />
-                                <Picker.Item label="Teacher" value="teacher" />
-                                <Picker.Item label="Admin" value="admin" />
-                            </Picker>
-                        </View>
+                        <EnhancedPicker
+                            label="Role"
+                            value={editRole}
+                            items={[
+                                { label: 'Student', value: 'student' },
+                                { label: 'Teacher', value: 'teacher' },
+                                { label: 'Admin', value: 'admin' },
+                            ]}
+                            onValueChange={(value) => setEditRole(value as any)}
+                            testID="edit-role-picker"
+                        />
 
                         {editRole === 'teacher' && (
-                            <View style={styles.pickerContainer}>
-                                <Text style={styles.label}>Department</Text>
-                                <Picker selectedValue={editDepartment} onValueChange={setEditDepartment}>
-                                    {DEPARTMENTS.map(dept => (
-                                        <Picker.Item key={dept} label={dept} value={dept} />
-                                    ))}
-                                </Picker>
-                            </View>
+                            <EnhancedPicker
+                                label="Department"
+                                value={editDepartment}
+                                items={departments.map(dept => ({ label: dept.name, value: dept.name }))}
+                                onValueChange={setEditDepartment}
+                                disabled={loadingData}
+                                testID="edit-department-picker"
+                            />
                         )}
 
                         {editRole === 'student' && (
@@ -752,23 +863,23 @@ export default function UserManagement() {
                                     value={editEnrollment} 
                                     onChangeText={setEditEnrollment} 
                                 />
-                                <View style={styles.pickerContainer}>
-                                    <Text style={styles.label}>Class Level</Text>
-                                    <Picker selectedValue={editClassLevel} onValueChange={setEditClassLevel}>
-                                        {CLASS_LEVELS.map(level => (
-                                            <Picker.Item key={level.value} label={level.label} value={level.value} />
-                                        ))}
-                                    </Picker>
-                                </View>
+                                <EnhancedPicker
+                                    label="Class Level"
+                                    value={editClassLevel}
+                                    items={classes.map(c => ({ label: c.name, value: c.value }))}
+                                    onValueChange={setEditClassLevel}
+                                    disabled={loadingData}
+                                    testID="edit-class-level-picker"
+                                />
                                 {editClassLevel?.startsWith('grad_year') && (
-                                    <View style={styles.pickerContainer}>
-                                        <Text style={styles.label}>Branch</Text>
-                                        <Picker selectedValue={editBranch} onValueChange={setEditBranch}>
-                                            {BRANCHES.map(branch => (
-                                                <Picker.Item key={branch} label={branch} value={branch} />
-                                            ))}
-                                        </Picker>
-                                    </View>
+                                    <EnhancedPicker
+                                        label="Branch"
+                                        value={editBranch}
+                                        items={editBranches.map(branch => ({ label: branch.name, value: branch.name }))}
+                                        onValueChange={setEditBranch}
+                                        disabled={loadingData}
+                                        testID="edit-branch-picker"
+                                    />
                                 )}
                             </>
                         )}
@@ -781,7 +892,7 @@ export default function UserManagement() {
                                 Save
                             </Button>
                         </View>
-                        </ScrollView>
+                        </KeyboardAwareScrollView>
                     </View>
                 </View>
             </Modal>
@@ -790,7 +901,10 @@ export default function UserManagement() {
             <Modal visible={createModalVisible} onRequestClose={() => setCreateModalVisible(false)} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modal, { backgroundColor: getSurfaceColor() }]}>
-                        <ScrollView keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
+                        <KeyboardAwareScrollView 
+                            contentContainerStyle={{ padding: tokens.spacing.md }}
+                            extraScrollHeight={30}
+                        >
                             <Text style={[styles.modalTitle, { color: getTextColor() }]}>Create New User</Text>
 
                         <SegmentedButtons
@@ -808,36 +922,36 @@ export default function UserManagement() {
                         <Input label="Password *" value={newUserPassword} onChangeText={setNewUserPassword} secureTextEntry />
 
                         {newUserRole === 'teacher' && (
-                            <View style={styles.pickerContainer}>
-                                <Text style={styles.label}>Department</Text>
-                                <Picker selectedValue={newUserDepartment} onValueChange={setNewUserDepartment}>
-                                    {DEPARTMENTS.map(dept => (
-                                        <Picker.Item key={dept} label={dept} value={dept} />
-                                    ))}
-                                </Picker>
-                            </View>
+                            <EnhancedPicker
+                                label="Department"
+                                value={newUserDepartment}
+                                items={departments.map(dept => ({ label: dept.name, value: dept.name }))}
+                                onValueChange={setNewUserDepartment}
+                                disabled={loadingData}
+                                testID="new-department-picker"
+                            />
                         )}
 
                         {newUserRole === 'student' && (
                             <>
                                 <Input label="Enrollment Number *" value={newUserEnrollment} onChangeText={setNewUserEnrollment} />
-                                <View style={styles.pickerContainer}>
-                                    <Text style={styles.label}>Class Level</Text>
-                                    <Picker selectedValue={newUserClassLevel} onValueChange={setNewUserClassLevel}>
-                                        {CLASS_LEVELS.map(level => (
-                                            <Picker.Item key={level.value} label={level.label} value={level.value} />
-                                        ))}
-                                    </Picker>
-                                </View>
+                                <EnhancedPicker
+                                    label="Class Level"
+                                    value={newUserClassLevel}
+                                    items={classes.map(c => ({ label: c.name, value: c.value }))}
+                                    onValueChange={setNewUserClassLevel}
+                                    disabled={loadingData}
+                                    testID="new-class-level-picker"
+                                />
                                 {newUserClassLevel?.startsWith('grad_year') && (
-                                    <View style={styles.pickerContainer}>
-                                        <Text style={styles.label}>Branch</Text>
-                                        <Picker selectedValue={newUserBranch} onValueChange={setNewUserBranch}>
-                                            {BRANCHES.map(branch => (
-                                                <Picker.Item key={branch} label={branch} value={branch} />
-                                            ))}
-                                        </Picker>
-                                    </View>
+                                    <EnhancedPicker
+                                        label="Branch"
+                                        value={newUserBranch}
+                                        items={branches.map(branch => ({ label: branch.name, value: branch.name }))}
+                                        onValueChange={setNewUserBranch}
+                                        disabled={loadingData}
+                                        testID="new-branch-picker"
+                                    />
                                 )}
                             </>
                         )}
@@ -850,7 +964,7 @@ export default function UserManagement() {
                                 Create
                             </Button>
                         </View>
-                        </ScrollView>
+                        </KeyboardAwareScrollView>
                     </View>
                 </View>
             </Modal>
