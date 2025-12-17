@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, Switch, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../lib/design-system/ThemeContext';
 import Button from '../components/design-system/primitives/Button';
@@ -163,7 +163,7 @@ export default function SettingsScreen({ navigation }: Props) {
                     'Clear Cache',
                     'Free up storage space',
                     'trash-outline',
-                    () => alert('Cache cleared successfully')
+                    () => Alert.alert('Success', 'Cache cleared successfully')
                 )}
             </Card>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Text, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Text, StatusBar, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { updateUserProfile } from '../lib/database';
@@ -8,15 +8,14 @@ import { useTheme } from '../lib/design-system/ThemeContext';
 import LoadingSpinner from '../components/design-system/feedback/LoadingSpinner';
 import Button from '../components/design-system/primitives/Button';
 import Input from '../components/design-system/primitives/Input';
-import Card from '../components/design-system/primitives/Card';
 import ImagePickerComponent from '../components/ImagePickerComponent';
-import { LinearGradient } from 'expo-linear-gradient';
 import type { StackScreenProps } from '@react-navigation/stack';
 
 type Props = StackScreenProps<any, 'Profile'>;
 
-export default function ProfileScreen({ navigation }: Props) {
+export default function ProfileScreen(_props: Props) {
     const { session, role } = useAuth();
+    const { tokens, getBackgroundColor, getSurfaceColor, getTextColor, getTextSecondaryColor, getRoleColor } = useTheme();
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -24,7 +23,6 @@ export default function ProfileScreen({ navigation }: Props) {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [avatarUrl, setAvatarUrl] = useState('');
-    const [uploadingImage, setUploadingImage] = useState(false);
     const [department, setDepartment] = useState('');
     const [enrollmentNumber, setEnrollmentNumber] = useState('');
     const [branch, setBranch] = useState('');
@@ -85,14 +83,14 @@ export default function ProfileScreen({ navigation }: Props) {
             const { error } = await updateUserProfile(userId, updates);
 
             if (error) {
-                alert('Error updating profile: ' + error);
+                Alert.alert('Error', 'Error updating profile: ' + error);
             } else {
-                alert('Profile updated successfully!');
+                Alert.alert('Success', 'Profile updated successfully!');
                 setEditing(false);
                 fetchProfile();
             }
         } catch (error: any) {
-            alert('Error: ' + error.message);
+            Alert.alert('Error', error.message);
         } finally {
             setSaving(false);
         }
@@ -100,7 +98,6 @@ export default function ProfileScreen({ navigation }: Props) {
 
     const handleImageSelected = async (uri: string) => {
         try {
-            setUploadingImage(true);
             const userId = session?.user?.id;
             if (!userId) return;
 
@@ -114,14 +111,11 @@ export default function ProfileScreen({ navigation }: Props) {
         } catch (error) {
             console.error('Error uploading image:', error);
             Alert.alert('Error', 'An error occurred while uploading');
-        } finally {
-            setUploadingImage(false);
         }
     };
 
 const handleFaceRegistration = async (uri: string) => {
     try {
-        setUploadingImage(true);
         const userId = session?.user?.id;
         if (!userId) return;
 
@@ -137,155 +131,188 @@ const handleFaceRegistration = async (uri: string) => {
     } catch (error) {
         console.error('Error uploading face image:', error);
         Alert.alert('Error', 'An error occurred while uploading');
-    } finally {
-        setUploadingImage(false);
     }
 };
 
-const { tokens, getBackgroundColor, getSurfaceColor, getTextColor, getTextSecondaryColor, getRoleColor } = useTheme();
-
 if (loading) {
-    return <LoadingSpinner />;
+    return (
+        <View style={[styles.loadingContainer, { backgroundColor: getBackgroundColor() }]}>
+            <LoadingSpinner size="large" />
+        </View>
+    );
 }
 
 const roleColor = getRoleColor();
-const gradientColors = roleColor ? roleColor.gradient : tokens.colors.primary.gradient;
+const headerColor = roleColor ? roleColor.main : tokens.colors.primary.main;
 
 return (
-    <ScrollView 
-        style={[styles.container, { backgroundColor: getBackgroundColor() }]}
-        keyboardShouldPersistTaps="always"
-        showsVerticalScrollIndicator={false}
-    >
-        {/* Gradient Profile Header */}
-        <LinearGradient
-            colors={gradientColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.header}
-        >
+    <View style={[styles.mainContainer, { backgroundColor: getBackgroundColor() }]}>
+        <StatusBar 
+            barStyle="light-content" 
+            backgroundColor={headerColor} 
+            translucent={false}
+        />
+        {/* Purple Header Section */}
+        <View style={[styles.header, { backgroundColor: headerColor }]}>
             <View style={styles.avatarContainer}>
                 <ImagePickerComponent
                     currentImageUrl={avatarUrl}
                     onImageSelected={handleImageSelected}
-                    size={100}
+                    size={80}
                 />
             </View>
             <Text style={styles.name}>{fullName}</Text>
             <Text style={styles.roleText}>{role?.toUpperCase()}</Text>
-        </LinearGradient>
+        </View>
 
-        {/* Personal Information Card */}
-        <Card style={styles.card}>
-            <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Personal Information</Text>
+        {/* Scrollable Content */}
+        <ScrollView 
+            style={[styles.scrollContainer, { backgroundColor: getBackgroundColor() }]}
+            keyboardShouldPersistTaps="always"
+            showsVerticalScrollIndicator={false}
+        >
+            {/* Personal Information Card */}
+            <View style={styles.section}>
+                <View style={[styles.card, { backgroundColor: getSurfaceColor() }]}>
+                    <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Personal Information</Text>
 
-            <Input
-                label="Full Name"
-                value={fullName}
-                onChangeText={setFullName}
-                disabled={!editing}
-            />
-
-            <Input
-                label="Email"
-                value={email}
-                onChangeText={() => {}}
-                disabled={true}
-            />
-
-            {role === 'student' && (
-                <>
-                    <Input
-                        label="Enrollment Number"
-                        value={enrollmentNumber}
-                        onChangeText={() => {}}
-                        disabled={true}
-                    />
-                    {branch && (
+                    <View style={styles.inputSpacing}>
                         <Input
-                            label="Branch"
-                            value={branch}
+                            label="Full Name"
+                            value={fullName}
+                            onChangeText={setFullName}
+                            disabled={!editing}
+                        />
+                    </View>
+
+                    <View style={styles.inputSpacing}>
+                        <Input
+                            label="Email"
+                            value={email}
                             onChangeText={() => {}}
                             disabled={true}
                         />
+                    </View>
+
+                    {role === 'student' && (
+                        <>
+                            <View style={styles.inputSpacing}>
+                                <Input
+                                    label="Enrollment Number"
+                                    value={enrollmentNumber}
+                                    onChangeText={() => {}}
+                                    disabled={true}
+                                />
+                            </View>
+                            {branch && (
+                                <View style={styles.inputSpacing}>
+                                    <Input
+                                        label="Branch"
+                                        value={branch}
+                                        onChangeText={() => {}}
+                                        disabled={true}
+                                    />
+                                </View>
+                            )}
+                        </>
                     )}
-                </>
-            )}
 
-            {role === 'teacher' && (
-                <Input
-                    label="Department"
-                    value={department}
-                    onChangeText={setDepartment}
-                    disabled={!editing}
-                />
-            )}
+                    {role === 'teacher' && (
+                        <View style={styles.inputSpacing}>
+                            <Input
+                                label="Department"
+                                value={department}
+                                onChangeText={setDepartment}
+                                disabled={!editing}
+                            />
+                        </View>
+                    )}
 
-            <View style={styles.buttonContainer}>
-                {!editing ? (
-                    <Button
-                        variant="primary"
-                        onPress={() => setEditing(true)}
-                    >
-                        Edit Profile
-                    </Button>
-                ) : (
-                    <>
-                        <Button
-                            variant="primary"
-                            onPress={handleSave}
-                            loading={saving}
-                            disabled={saving}
-                            style={styles.buttonSpaced}
-                        >
-                            Save Changes
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            onPress={() => {
-                                setEditing(false);
-                                fetchProfile();
-                            }}
-                            disabled={saving}
-                        >
-                            Cancel
-                        </Button>
-                    </>
-                )}
-            </View>
-        </Card>
-
-        {/* Face Recognition Section (Students Only) */}
-        {role === 'student' && (
-            <Card style={styles.card}>
-                <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Face Recognition</Text>
-                <Text style={[styles.sectionDescription, { color: getTextSecondaryColor() }]}>
-                    Upload a clear photo of your face to enable automated attendance.
-                </Text>
-                <View style={styles.faceRegistrationContainer}>
-                    <ImagePickerComponent
-                        currentImageUrl={undefined}
-                        onImageSelected={handleFaceRegistration}
-                        size={60}
-                    />
+                    <View style={styles.buttonContainer}>
+                        {!editing ? (
+                            <Button
+                                variant="primary"
+                                onPress={() => setEditing(true)}
+                            >
+                                Edit Profile
+                            </Button>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="primary"
+                                    onPress={handleSave}
+                                    loading={saving}
+                                    disabled={saving}
+                                    style={styles.buttonSpaced}
+                                >
+                                    Save Changes
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onPress={() => {
+                                        setEditing(false);
+                                        fetchProfile();
+                                    }}
+                                    disabled={saving}
+                                >
+                                    Cancel
+                                </Button>
+                            </>
+                        )}
+                    </View>
                 </View>
-            </Card>
-        )}
-    </ScrollView>
+            </View>
+
+            {/* Face Recognition Section (Students Only) */}
+            {role === 'student' && (
+                <View style={styles.section}>
+                    <View style={[styles.card, { backgroundColor: getSurfaceColor() }]}>
+                        <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Face Recognition</Text>
+                        <Text style={[styles.sectionDescription, { color: getTextSecondaryColor() }]}>
+                            Upload a clear photo of your face to enable automated attendance.
+                        </Text>
+                        <View style={styles.faceRegistrationContainer}>
+                            <ImagePickerComponent
+                                currentImageUrl={undefined}
+                                onImageSelected={handleFaceRegistration}
+                                size={60}
+                            />
+                        </View>
+                    </View>
+                </View>
+            )}
+        </ScrollView>
+    </View>
 );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    mainContainer: {
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    scrollContainer: {
         flex: 1,
     },
     header: {
         alignItems: 'center',
-        paddingVertical: 48,
-        paddingHorizontal: 24,
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 60 : 20,
+        paddingBottom: 20,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
     },
     avatarContainer: {
-        marginBottom: 16,
+        marginBottom: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -294,34 +321,46 @@ const styles = StyleSheet.create({
         borderRadius: 50,
     },
     name: {
-        fontSize: 26,
+        fontSize: 22,
         fontWeight: '700',
         color: '#FFFFFF',
         marginBottom: 4,
         textAlign: 'center',
     },
     roleText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: 'rgba(255, 255, 255, 0.95)',
         letterSpacing: 1,
     },
-    card: {
-        marginHorizontal: 16,
+    section: {
+        paddingHorizontal: 20,
         marginTop: 16,
     },
+    card: {
+        borderRadius: 12,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 2,
+    },
     sectionTitle: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '700',
-        marginBottom: 16,
+        marginBottom: 12,
     },
     sectionDescription: {
-        fontSize: 15,
-        lineHeight: 22,
-        marginBottom: 16,
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 12,
+    },
+    inputSpacing: {
+        marginBottom: 10,
     },
     buttonContainer: {
-        marginTop: 8,
+        marginTop: 12,
     },
     buttonSpaced: {
         marginBottom: 12,

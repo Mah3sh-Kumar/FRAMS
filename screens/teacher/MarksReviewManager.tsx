@@ -119,9 +119,15 @@ export default function MarksReviewManager() {
 
     const stats = {
         totalGraded: filteredSubmissions.length,
-        avgScore: filteredSubmissions.reduce((sum, s) => sum + (s.score || 0), 0) / Math.max(filteredSubmissions.length, 1),
-        highestScore: Math.max(...filteredSubmissions.map(s => s.score || 0), 0),
-        lowestScore: filteredSubmissions.length > 0 ? Math.min(...filteredSubmissions.map(s => s.score || 0)) : 0,
+        avgScore: filteredSubmissions.length > 0 
+            ? filteredSubmissions.reduce((sum, s) => sum + (s.score || 0), 0) / filteredSubmissions.length 
+            : 0,
+        highestScore: filteredSubmissions.length > 0 
+            ? Math.max(...filteredSubmissions.map(s => s.score || 0)) 
+            : 0,
+        lowestScore: filteredSubmissions.length > 0 
+            ? Math.min(...filteredSubmissions.map(s => s.score || 0)) 
+            : 0,
     };
 
     const exportToCSV = async () => {

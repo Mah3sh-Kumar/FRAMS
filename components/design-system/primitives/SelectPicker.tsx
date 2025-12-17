@@ -1,80 +1,40 @@
 /**
- * EnhancedPicker Component
+ * SelectPicker Component
  * 
- * An improved picker component with proper state management, visual feedback,
- * search functionality, and accessibility features. Fixes the value display
- * issues present in the standard React Native Picker.
- * 
- * Features:
- * - Controlled component with proper value display
- * - Automatic search for lists with >10 items
- * - Visual feedback on selection
- * - Error state support
- * - Full accessibility support (screen readers, keyboard navigation)
- * - Modal-based selection for better UX
- * 
- * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 4.3, 4.4, 4.6
- * 
- * @example
- * ```tsx
- * <EnhancedPicker
- *   label="Class"
- *   value={selectedClass}
- *   items={[
- *     { label: 'Grade 1', value: 'grade_1' },
- *     { label: 'Grade 2', value: 'grade_2' },
- *   ]}
- *   onValueChange={setSelectedClass}
- *   error={errors.class}
- *   searchable
- * />
- * ```
+ * An enhanced picker component specifically designed for class levels and departments
+ * with improved visual design, icons, and better user experience.
  */
 
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../lib/design-system/ThemeContext';
+import type { ComponentProps } from 'react';
 
-/**
- * Represents a single item in the picker dropdown
- * @template T - Type of the value (defaults to string)
- */
-export interface PickerItem<T = string> {
-  /** Display text shown to the user */
+type IoniconsName = ComponentProps<typeof Ionicons>['name'];
+import { useTheme } from '../../../lib/design-system/ThemeContext';
+
+export interface SelectPickerItem<T = string> {
   label: string;
-  /** Internal value used for selection */
   value: T;
-  /** Whether this item can be selected */
+  icon?: IoniconsName;
+  description?: string;
   disabled?: boolean;
 }
 
-/**
- * Props for the EnhancedPicker component
- * @template T - Type of the value (defaults to string)
- */
-export interface EnhancedPickerProps<T = string> {
-  /** Label displayed above the picker */
+export interface SelectPickerProps<T = string> {
   label: string;
-  /** Currently selected value */
   value: T;
-  /** Array of items to display in the picker */
-  items: PickerItem<T>[];
-  /** Callback fired when selection changes */
+  items: SelectPickerItem<T>[];
   onValueChange: (value: T) => void;
-  /** Error message to display below the picker */
   error?: string;
-  /** Whether the picker is disabled */
   disabled?: boolean;
-  /** Placeholder text when no value is selected */
   placeholder?: string;
-  /** Enable search functionality (auto-enabled for >10 items) */
   searchable?: boolean;
-  /** Test ID for automated testing */
   testID?: string;
+  variant?: 'default' | 'academic' | 'department';
 }
 
-function EnhancedPicker<T = string>({
+function SelectPicker<T = string>({
   label,
   value,
   items,
@@ -84,12 +44,12 @@ function EnhancedPicker<T = string>({
   placeholder = 'Select an option',
   searchable = false,
   testID,
-}: EnhancedPickerProps<T>) {
+  variant = 'default',
+}: SelectPickerProps<T>) {
   const { tokens, getTextColor, getTextSecondaryColor, getSurfaceColor } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
-  const [buttonFocused, setButtonFocused] = useState(false);
 
   // Find the selected item to display its label
   const selectedItem = useMemo(() => {
@@ -98,18 +58,26 @@ function EnhancedPicker<T = string>({
 
   // Filter items based on search query
   const filteredItems = useMemo(() => {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    
     const trimmedQuery = searchQuery.trim();
     if (!searchable || !trimmedQuery) {
       return items;
     }
+    
     const query = trimmedQuery.toLowerCase();
     return items.filter(item => 
-      item.label.toLowerCase().includes(query)
+      item && 
+      item.label && 
+      (item.label.toLowerCase().includes(query) ||
+      (item.description && item.description.toLowerCase().includes(query)))
     );
   }, [items, searchQuery, searchable]);
 
-  // Determine if search should be shown (more than 10 items)
-  const shouldShowSearch = searchable || items.length > 10;
+  // Determine if search should be shown
+  const shouldShowSearch = searchable || items.length > 8;
 
   const handleSelect = (itemValue: T) => {
     onValueChange(itemValue);
@@ -120,7 +88,6 @@ function EnhancedPicker<T = string>({
   const handleOpen = () => {
     if (!disabled) {
       setModalVisible(true);
-      setButtonFocused(true);
     }
   };
 
@@ -128,7 +95,42 @@ function EnhancedPicker<T = string>({
     setModalVisible(false);
     setSearchQuery('');
     setSearchFocused(false);
-    setButtonFocused(false);
+  };
+
+  // Get icon for variant
+  const getVariantIcon = (): IoniconsName => {
+    switch (variant) {
+      case 'academic':
+        return 'school-outline';
+      case 'department':
+        return 'business-outline';
+      default:
+        return 'list-outline';
+    }
+  };
+
+  // Get default icons for items based on variant
+  const getItemIcon = (item: SelectPickerItem<T>): IoniconsName => {
+    if (item.icon) return item.icon;
+    
+    if (variant === 'academic') {
+      const valueStr = String(item.value);
+      if (valueStr.includes('class_')) return 'library-outline';
+      if (valueStr.includes('grad_')) return 'school-outline';
+    }
+    
+    if (variant === 'department') {
+      const label = item.label.toLowerCase();
+      if (label.includes('computer') || label.includes('information')) return 'laptop-outline';
+      if (label.includes('engineering')) return 'construct-outline';
+      if (label.includes('mathematics') || label.includes('physics')) return 'calculator-outline';
+      if (label.includes('biology') || label.includes('chemistry')) return 'flask-outline';
+      if (label.includes('english') || label.includes('history')) return 'book-outline';
+      if (label.includes('commerce') || label.includes('economics')) return 'trending-up-outline';
+      return 'briefcase-outline';
+    }
+    
+    return 'ellipse-outline';
   };
 
   const styles = StyleSheet.create({
@@ -153,18 +155,26 @@ function EnhancedPicker<T = string>({
       paddingVertical: 14,
       minHeight: 52,
       shadowColor: tokens.colors.primary.main,
-      shadowOffset: { width: 0, height: 0 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0,
       shadowRadius: 8,
       elevation: 0,
     },
     pickerButtonFocused: {
       borderColor: tokens.colors.primary.main,
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.1,
       elevation: 2,
     },
     pickerButtonDisabled: {
       opacity: 0.6,
+    },
+    pickerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    pickerIcon: {
+      marginRight: 12,
     },
     pickerText: {
       fontSize: 16,
@@ -175,6 +185,9 @@ function EnhancedPicker<T = string>({
     placeholderText: {
       color: getTextSecondaryColor(),
       fontWeight: '400',
+    },
+    chevronIcon: {
+      marginLeft: 8,
     },
     errorText: {
       fontSize: 14,
@@ -188,23 +201,24 @@ function EnhancedPicker<T = string>({
       alignItems: 'center',
     },
     modalContent: {
-      width: '92%',
-      maxHeight: '85%',
+      width: '90%',
+      maxWidth: 400,
+      maxHeight: '80%',
       backgroundColor: getSurfaceColor(),
-      borderRadius: 20,
-      padding: 24,
+      borderRadius: 16,
+      padding: 16,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.25,
-      shadowRadius: 20,
-      elevation: 10,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 12,
     },
     modalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 20,
-      paddingBottom: 16,
+      marginBottom: 16,
+      paddingBottom: 12,
       borderBottomWidth: 1,
       borderBottomColor: tokens.colors.neutral.gray200,
     },
@@ -214,12 +228,12 @@ function EnhancedPicker<T = string>({
       color: getTextColor(),
     },
     closeButton: {
-      padding: 4,
+      padding: 8,
       borderRadius: 20,
       backgroundColor: tokens.colors.neutral.gray100,
     },
     searchContainer: {
-      marginBottom: 16,
+      marginBottom: 12,
     },
     searchInput: {
       backgroundColor: tokens.colors.neutral.gray50,
@@ -236,41 +250,71 @@ function EnhancedPicker<T = string>({
       backgroundColor: getSurfaceColor(),
     },
     listContainer: {
-      maxHeight: 400,
+      height: 300,
     },
     listItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      borderRadius: 10,
       marginBottom: 4,
       backgroundColor: 'transparent',
-    },
-    listItemHover: {
-      backgroundColor: tokens.colors.neutral.gray50,
+      borderWidth: 1,
+      borderColor: 'transparent',
+      minHeight: 60,
     },
     listItemSelected: {
-      backgroundColor: tokens.colors.primary.light,
-      borderWidth: 1,
-      borderColor: tokens.colors.primary.main,
+      backgroundColor: '#6366F1',
+      borderColor: '#6366F1',
+      shadowColor: '#6366F1',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
     },
     listItemDisabled: {
       opacity: 0.4,
     },
-    listItemText: {
-      fontSize: 16,
-      color: getTextColor(),
+    listItemIcon: {
+      marginRight: 10,
+      width: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    listItemContent: {
       flex: 1,
+      paddingRight: 8,
+    },
+    listItemText: {
+      fontSize: 15,
+      color: getTextColor(),
       fontWeight: '500',
+      marginBottom: 2,
     },
     listItemTextSelected: {
-      fontWeight: '600',
-      color: tokens.colors.primary.main,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      fontSize: 15,
+    },
+    listItemDescription: {
+      fontSize: 12,
+      color: getTextSecondaryColor(),
+      opacity: 0.8,
+      lineHeight: 16,
+    },
+    listItemDescriptionSelected: {
+      fontSize: 12,
+      color: '#FFFFFF',
+      opacity: 0.9,
+      fontWeight: '400',
+      lineHeight: 16,
     },
     checkIcon: {
-      marginLeft: 12,
+      marginLeft: 8,
+      width: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     emptyState: {
       padding: 40,
@@ -299,8 +343,8 @@ function EnhancedPicker<T = string>({
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
         style={[
-          styles.pickerButton, 
-          buttonFocused && !error && styles.pickerButtonFocused,
+          styles.pickerButton,
+          modalVisible && !error && styles.pickerButtonFocused,
           disabled && styles.pickerButtonDisabled
         ]}
         onPress={handleOpen}
@@ -312,20 +356,31 @@ function EnhancedPicker<T = string>({
         accessibilityState={{ disabled }}
         testID={testID ? `${testID}-button` : undefined}
       >
-        <Text
-          style={[
-            styles.pickerText,
-            !selectedItem && styles.placeholderText,
-          ]}
-          testID={testID ? `${testID}-value` : undefined}
-        >
-          {selectedItem ? selectedItem.label : placeholder}
-        </Text>
-        <Ionicons
-          name={modalVisible ? "chevron-up" : "chevron-down"}
-          size={22}
-          color={disabled ? tokens.colors.neutral.gray400 : buttonFocused ? tokens.colors.primary.main : getTextSecondaryColor()}
-        />
+        <View style={styles.pickerContent}>
+          <View style={styles.pickerIcon}>
+            <Ionicons
+              name={selectedItem ? getItemIcon(selectedItem) : getVariantIcon()}
+              size={20}
+              color={selectedItem ? tokens.colors.primary.main : getTextSecondaryColor()}
+            />
+          </View>
+          <Text
+            style={[
+              styles.pickerText,
+              !selectedItem && styles.placeholderText,
+            ]}
+            testID={testID ? `${testID}-value` : undefined}
+          >
+            {selectedItem ? selectedItem.label : placeholder}
+          </Text>
+        </View>
+        <View style={styles.chevronIcon}>
+          <Ionicons
+            name={modalVisible ? "chevron-up" : "chevron-down"}
+            size={20}
+            color={disabled ? tokens.colors.neutral.gray400 : modalVisible ? tokens.colors.primary.main : getTextSecondaryColor()}
+          />
+        </View>
       </TouchableOpacity>
       {error && (
         <Text style={styles.errorText} testID={testID ? `${testID}-error` : undefined}>
@@ -359,7 +414,7 @@ function EnhancedPicker<T = string>({
                   accessibilityRole="button"
                   accessibilityLabel="Close picker"
                 >
-                  <Ionicons name="close" size={20} color={getTextSecondaryColor()} />
+                  <Ionicons name="close" size={18} color={getTextSecondaryColor()} />
                 </TouchableOpacity>
               </View>
 
@@ -384,11 +439,16 @@ function EnhancedPicker<T = string>({
               )}
 
               <View style={styles.listContainer}>
-                <FlatList
-                  data={filteredItems}
-                  keyExtractor={(item, index) => `${item.value}-${index}`}
-                  showsVerticalScrollIndicator={false}
-                  renderItem={({ item }) => {
+                {filteredItems.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>No items available</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={filteredItems}
+                    keyExtractor={(item, index) => `${item.value}-${index}`}
+                    showsVerticalScrollIndicator={false}
+                    renderItem={({ item }) => {
                     const isSelected = item.value === value;
                     return (
                       <TouchableOpacity
@@ -405,20 +465,43 @@ function EnhancedPicker<T = string>({
                         accessibilityState={{ selected: isSelected, disabled: item.disabled }}
                         testID={testID ? `${testID}-item-${item.value}` : undefined}
                       >
-                        <Text
-                          style={[
-                            styles.listItemText,
-                            isSelected && styles.listItemTextSelected,
-                          ]}
-                        >
-                          {item.label}
-                        </Text>
+                        <View style={styles.listItemIcon}>
+                          <Ionicons
+                            name={getItemIcon(item)}
+                            size={18}
+                            color={isSelected ? '#FFFFFF' : getTextSecondaryColor()}
+                          />
+                        </View>
+                        <View style={styles.listItemContent}>
+                          <Text
+                            style={[
+                              styles.listItemText,
+                              isSelected && styles.listItemTextSelected,
+                            ]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {item.label}
+                          </Text>
+                          {item.description && (
+                            <Text 
+                              style={[
+                                styles.listItemDescription,
+                                isSelected && styles.listItemDescriptionSelected,
+                              ]}
+                              numberOfLines={2}
+                              ellipsizeMode="tail"
+                            >
+                              {item.description}
+                            </Text>
+                          )}
+                        </View>
                         {isSelected && (
                           <View style={styles.checkIcon}>
                             <Ionicons
                               name="checkmark-circle"
-                              size={22}
-                              color={tokens.colors.primary.main}
+                              size={20}
+                              color="#FFFFFF"
                             />
                           </View>
                         )}
@@ -442,8 +525,9 @@ function EnhancedPicker<T = string>({
                       </Text>
                     </View>
                   }
-                  testID={testID ? `${testID}-list` : undefined}
-                />
+                    testID={testID ? `${testID}-list` : undefined}
+                  />
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -453,4 +537,4 @@ function EnhancedPicker<T = string>({
   );
 }
 
-export default EnhancedPicker;
+export default SelectPicker;

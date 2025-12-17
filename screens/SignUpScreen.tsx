@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth, SignUpPayload } from '../context/AuthContext';
 import { checkEnrollmentNumberUnique } from '../lib/database';
 import { DEPARTMENTS, CLASS_LEVELS, BRANCHES } from '../lib/constants';
+import SelectPicker from '../components/design-system/primitives/SelectPicker';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import type { StackScreenProps } from '@react-navigation/stack';
 import { useTheme } from '../lib/design-system/ThemeContext';
@@ -18,7 +20,7 @@ type Props = StackScreenProps<any, 'SignUp'>;
 
 export default function SignUpScreen({ navigation }: Props) {
     const { signUp, loading: authLoading } = useAuth();
-    const { getTextColor, getSurfaceColor } = useTheme();
+    const { getTextColor, getSurfaceColor, tokens } = useTheme();
 
     // Form state
     const [role, setRole] = useState<'student' | 'teacher'>('student');
@@ -82,11 +84,11 @@ export default function SignUpScreen({ navigation }: Props) {
             setClasses(classesResult.data || []);
             setDepartments(departmentsResult.data || []);
 
-            // Set default values
-            if (classesResult.data && classesResult.data.length > 0) {
+            // Set default values with proper null checks
+            if (classesResult.data && Array.isArray(classesResult.data) && classesResult.data.length > 0) {
                 setClassLevel(classesResult.data[0].value);
             }
-            if (departmentsResult.data && departmentsResult.data.length > 0) {
+            if (departmentsResult.data && Array.isArray(departmentsResult.data) && departmentsResult.data.length > 0) {
                 setDepartment(departmentsResult.data[0].name);
             }
         } catch (error: any) {
@@ -114,8 +116,8 @@ export default function SignUpScreen({ navigation }: Props) {
 
             setBranches(branchesResult.data || []);
             
-            // Set default branch if available
-            if (branchesResult.data && branchesResult.data.length > 0) {
+            // Set default branch if available with proper null checks
+            if (branchesResult.data && Array.isArray(branchesResult.data) && branchesResult.data.length > 0) {
                 setBranch(branchesResult.data[0].name);
             } else {
                 setBranch('');
@@ -145,14 +147,23 @@ export default function SignUpScreen({ navigation }: Props) {
         }, 500); // 500ms debounce
     }, [role]);
 
-    // Cleanup timer on unmount
+    // Cleanup timer on unmount and when component unmounts
     useEffect(() => {
         return () => {
             if (enrollmentCheckTimer.current) {
                 clearTimeout(enrollmentCheckTimer.current);
+                enrollmentCheckTimer.current = null;
             }
         };
     }, []);
+
+    // Also cleanup timer when role changes to prevent stale validations
+    useEffect(() => {
+        if (enrollmentCheckTimer.current) {
+            clearTimeout(enrollmentCheckTimer.current);
+            enrollmentCheckTimer.current = null;
+        }
+    }, [role]);
 
     const validateForm = async (): Promise<boolean> => {
         const newErrors: Record<string, string> = {};
@@ -374,6 +385,15 @@ export default function SignUpScreen({ navigation }: Props) {
                             autoCapitalize="none"
                             disabled={isSubmitting || authLoading}
                             error={errors.password}
+                            rightIcon={
+                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                    <Ionicons 
+                                        name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                        size={24} 
+                                        color={tokens.colors.neutral.gray500} 
+                                    />
+                                </TouchableOpacity>
+                            }
                         />
                         <PasswordStrengthIndicator password={password} />
 
@@ -385,6 +405,15 @@ export default function SignUpScreen({ navigation }: Props) {
                             autoCapitalize="none"
                             disabled={isSubmitting || authLoading}
                             error={errors.confirmPassword}
+                            rightIcon={
+                                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                    <Ionicons 
+                                        name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                        size={24} 
+                                        color={tokens.colors.neutral.gray500} 
+                                    />
+                                </TouchableOpacity>
+                            }
                         />
 
                         {/* Student-Specific Fields */}
@@ -399,12 +428,19 @@ export default function SignUpScreen({ navigation }: Props) {
                                     keyboardType="numeric"
                                 />
 
-                                <EnhancedPicker
+                                <SelectPicker
                                     label="Class Level"
                                     value={classLevel}
-                                    items={classes.map(c => ({ label: c.name, value: c.value }))}
+                                    items={CLASS_LEVELS.map(c => ({ 
+                                        label: c.label, 
+                                        value: c.value,
+                                        description: c.description,
+                                        icon: c.icon
+                                    }))}
                                     onValueChange={(value) => setClassLevel(value)}
                                     disabled={isSubmitting || authLoading || loadingData}
+                                    variant="academic"
+                                    searchable={true}
                                     testID="class-level-picker"
                                 />
 
@@ -424,13 +460,20 @@ export default function SignUpScreen({ navigation }: Props) {
 
                         {/* Teacher-Specific Fields */}
                         {role === 'teacher' && (
-                            <EnhancedPicker
+                            <SelectPicker
                                 label="Department"
                                 value={department}
-                                items={departments.map(dept => ({ label: dept.name, value: dept.name }))}
+                                items={DEPARTMENTS.map(dept => ({ 
+                                    label: dept.name, 
+                                    value: dept.name,
+                                    description: dept.description,
+                                    icon: dept.icon
+                                }))}
                                 onValueChange={(value) => setDepartment(value)}
                                 disabled={isSubmitting || authLoading || loadingData}
                                 error={errors.department}
+                                variant="department"
+                                searchable={true}
                                 testID="department-picker"
                             />
                         )}

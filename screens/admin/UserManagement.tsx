@@ -1,18 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, Alert, FlatList, ScrollView, TouchableOpacity, Modal, Text } from 'react-native';
+import { View, StyleSheet, Alert, FlatList, ScrollView, TouchableOpacity, Modal, Text, StatusBar } from 'react-native';
 import { SegmentedButtons } from 'react-native-paper';
 import { supabase } from '../../lib/supabase';
 import { verifyUser, unverifyUser, updateUserRole, deleteUser } from '../../lib/admin';
 import { useTheme } from '../../lib/design-system/ThemeContext';
-import Card from '../../components/design-system/primitives/Card';
 import Button from '../../components/design-system/primitives/Button';
 import Input from '../../components/design-system/primitives/Input';
-import GlassmorphicWidget from '../../components/design-system/analytics/GlassmorphicWidget';
 import LoadingSpinner from '../../components/design-system/feedback/LoadingSpinner';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import EmptyState from '../../components/EmptyState';
-import GradientBackground from '../../components/GradientBackground';
-import { DEPARTMENTS, CLASS_LEVELS, BRANCHES } from '../../lib/constants';
+import { DEPARTMENTS, CLASS_LEVELS } from '../../lib/constants';
+import SelectPicker from '../../components/design-system/primitives/SelectPicker';
 import { Ionicons } from '@expo/vector-icons';
 import { exportCSV } from '../../lib/csvExport';
 import KeyboardAwareScrollView from '../../components/KeyboardAwareScrollView';
@@ -54,12 +52,18 @@ export default function UserManagement() {
     const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
     const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
 
+    // Verification Confirmation
+    const [verifyConfirmVisible, setVerifyConfirmVisible] = useState(false);
+    const [unverifyConfirmVisible, setUnverifyConfirmVisible] = useState(false);
+    const [userToVerify, setUserToVerify] = useState<UserData | null>(null);
+
     // Create User Modal
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [newUserRole, setNewUserRole] = useState<'student' | 'teacher'>('student');
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
+    const [showNewUserPassword, setShowNewUserPassword] = useState(false);
     const [newUserDepartment, setNewUserDepartment] = useState('');
     const [newUserEnrollment, setNewUserEnrollment] = useState('');
     const [newUserClassLevel, setNewUserClassLevel] = useState('');
@@ -70,7 +74,6 @@ export default function UserManagement() {
     const [classes, setClasses] = useState<ClassItem[]>([]);
     const [branches, setBranches] = useState<BranchItem[]>([]);
     const [editBranches, setEditBranches] = useState<BranchItem[]>([]);
-    const [departments, setDepartments] = useState<DepartmentItem[]>([]);
     const [loadingData, setLoadingData] = useState(true);
     const [dataError, setDataError] = useState<string | null>(null);
 
@@ -110,7 +113,6 @@ export default function UserManagement() {
             }
 
             setClasses(classesResult.data || []);
-            setDepartments(departmentsResult.data || []);
 
             // Set default values
             if (classesResult.data && classesResult.data.length > 0) {
@@ -206,24 +208,32 @@ export default function UserManagement() {
         }
     };
 
-    const handleVerifyUser = async (userId: string) => {
+    const handleVerifyUser = async () => {
+        if (!userToVerify) return;
+
         try {
-            const { error } = await verifyUser(userId);
+            const { error } = await verifyUser(userToVerify.id);
             if (error) throw new Error(error);
             
             Alert.alert('Success', 'User verified successfully');
+            setVerifyConfirmVisible(false);
+            setUserToVerify(null);
             fetchUsers();
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to verify user');
         }
     };
 
-    const handleUnverifyUser = async (userId: string) => {
+    const handleUnverifyUser = async () => {
+        if (!userToVerify) return;
+
         try {
-            const { error } = await unverifyUser(userId);
+            const { error } = await unverifyUser(userToVerify.id);
             if (error) throw new Error(error);
             
             Alert.alert('Success', 'User unverified successfully');
+            setUnverifyConfirmVisible(false);
+            setUserToVerify(null);
             fetchUsers();
         } catch (error: any) {
             Alert.alert('Error', error.message || 'Failed to unverify user');
@@ -250,7 +260,7 @@ export default function UserManagement() {
         setSelectedUser(user);
         setEditName(user.full_name || '');
         setEditRole(user.role);
-        setEditDepartment(user.department || (departments.length > 0 ? departments[0].name : ''));
+        setEditDepartment(user.department || (DEPARTMENTS.length > 0 ? DEPARTMENTS[0].name : ''));
         setEditEnrollment(user.enrollment_number || '');
         setEditClassLevel(user.class_level || (classes.length > 0 ? classes[0].value : ''));
         setEditBranch(user.branch || '');
@@ -404,8 +414,9 @@ export default function UserManagement() {
         setNewUserName('');
         setNewUserEmail('');
         setNewUserPassword('');
+        setShowNewUserPassword(false);
         setNewUserRole('student');
-        setNewUserDepartment(departments.length > 0 ? departments[0].name : '');
+        setNewUserDepartment(DEPARTMENTS.length > 0 ? DEPARTMENTS[0].name : '');
         setNewUserEnrollment('');
         setNewUserClassLevel(classes.length > 0 ? classes[0].value : '');
         setNewUserBranch('');
@@ -465,182 +476,261 @@ export default function UserManagement() {
         }
     };
 
-    const { tokens, getTextColor, getTextSecondaryColor, getSurfaceColor } = useTheme();
+    const { tokens, getBackgroundColor, getTextColor, getTextSecondaryColor, getSurfaceColor } = useTheme();
 
     const styles = useMemo(() => StyleSheet.create({
-        container: { flex: 1 },
+        mainContainer: { 
+            flex: 1,
+        },
+        scrollContainer: {
+            flex: 1,
+        },
         header: { 
-            flexDirection: 'row', 
-            justifyContent: 'space-between', 
-            alignItems: 'flex-start', 
-            padding: tokens.spacing.lg,
-            paddingTop: tokens.spacing.xl,
+            paddingHorizontal: 26,
+            paddingTop: 60,
+            paddingBottom: 33,
+            borderBottomLeftRadius: 24,
+            borderBottomRightRadius: 24,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 5,
+        },
+        headerRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+        },
+        headerContent: {
+            flex: 1,
         },
         headerTitle: {
-            fontSize: tokens.typography.h1.fontSize,
-            fontWeight: tokens.typography.h1.fontWeight,
-            color: tokens.colors.neutral.white,
-            marginBottom: tokens.spacing.xs / 2,
+            fontSize: 24,
+            fontWeight: '800',
+            color: '#FFFFFF',
+            marginBottom: 4,
+            lineHeight: 28,
         },
         headerSubtitle: {
-            fontSize: tokens.typography.body.fontSize,
-            color: tokens.colors.neutral.white,
+            fontSize: 14,
+            color: '#FFFFFF',
+            opacity: 0.95,
+            lineHeight: 18,
+        },
+        headerActions: {
+            flexDirection: 'row',
+            gap: 10,
         },
         headerButton: {
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
             justifyContent: 'center',
             alignItems: 'center',
-            borderRadius: tokens.borders.radius.medium,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.3)',
         },
-        createButton: {
-            width: 48,
-            height: 48,
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderRadius: tokens.borders.radius.medium,
-            backgroundColor: tokens.colors.primary.main,
+        section: {
+            paddingHorizontal: 20,
+            marginTop: 12,
+            marginBottom: 4,
         },
-        statsContainer: { 
-            flexDirection: 'row', 
-            padding: tokens.spacing.md,
-            gap: tokens.spacing.md,
+        sectionTitle: {
+            fontSize: 16,
+            fontWeight: '700',
+            marginBottom: 10,
+        },
+        statsGrid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 10,
         },
         statCard: { 
-            minWidth: 120,
-            marginRight: tokens.spacing.sm,
+            flex: 1,
+            minWidth: '45%',
+            borderRadius: 16,
+            padding: 16,
+            minHeight: 120,
+            justifyContent: 'space-between',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+            elevation: 2,
         },
-        statContent: {
+        statHeader: {
+            flexDirection: 'row',
             alignItems: 'center',
-            gap: tokens.spacing.sm,
+            gap: 6,
+            marginBottom: 4,
+        },
+        statIconContainer: {
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            justifyContent: 'center',
+            alignItems: 'center',
         },
         statValue: { 
-            fontSize: tokens.typography.display.fontSize, 
-            fontWeight: tokens.typography.display.fontWeight,
-            color: tokens.colors.neutral.gray900,
+            fontSize: 30,
+            fontWeight: '700',
         },
         statLabel: { 
-            fontSize: tokens.typography.caption.fontSize, 
-            marginTop: tokens.spacing.xs, 
-            textAlign: 'center',
-            color: tokens.colors.neutral.gray800,
+            fontSize: 15,
+            fontWeight: '500',
+            flex: 1,
+        },
+        errorCard: {
+            borderRadius: 12,
+            padding: 12,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+            elevation: 2,
+        },
+        errorContent: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        errorText: {
+            flex: 1,
+            fontSize: 14,
+        },
+        retryText: {
             fontWeight: '600',
+            fontSize: 14,
         },
         searchContainer: {
-            paddingHorizontal: tokens.spacing.md,
-            marginBottom: tokens.spacing.sm,
+            marginBottom: 10,
         },
         filterButtons: { 
-            marginHorizontal: tokens.spacing.md, 
-            marginBottom: tokens.spacing.sm,
+            marginBottom: 10,
+        },
+        loadingContainer: {
+            paddingVertical: 32,
+            alignItems: 'center',
         },
         list: { 
-            padding: tokens.spacing.md,
-            paddingBottom: tokens.spacing.xl,
+            paddingBottom: 8,
         },
-        card: { marginBottom: tokens.spacing.md },
+        card: { 
+            marginBottom: 12,
+            borderRadius: 12,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+            elevation: 2,
+        },
         cardContent: { 
             flexDirection: 'row', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            padding: tokens.spacing.md,
+            padding: 14,
         },
         userInfo: { flex: 1 },
         userName: {
-            fontSize: tokens.typography.h3.fontSize,
-            fontWeight: tokens.typography.h3.fontWeight,
+            fontSize: 16,
+            fontWeight: '600',
         },
         email: { 
-            marginBottom: tokens.spacing.sm, 
-            marginTop: tokens.spacing.xs, 
-            fontSize: tokens.typography.body.fontSize,
+            marginBottom: 6, 
+            marginTop: 3, 
+            fontSize: 13,
         },
         badges: { 
             flexDirection: 'row', 
             flexWrap: 'wrap', 
-            gap: tokens.spacing.xs, 
-            marginTop: tokens.spacing.sm,
+            gap: 6, 
+            marginTop: 6,
         },
         badge: {
-            width: 24,
-            height: 24,
-            borderRadius: tokens.borders.radius.full,
+            width: 20,
+            height: 20,
+            borderRadius: 10,
             justifyContent: 'center',
             alignItems: 'center',
         },
         roleBadge: {
-            paddingHorizontal: tokens.spacing.sm,
-            paddingVertical: tokens.spacing.xs / 2,
-            borderRadius: tokens.borders.radius.full,
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+            borderRadius: 10,
         },
         statusBadge: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: tokens.spacing.xs / 2,
-            paddingHorizontal: tokens.spacing.sm,
-            paddingVertical: tokens.spacing.xs / 2,
-            borderRadius: tokens.borders.radius.full,
+            gap: 3,
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+            borderRadius: 10,
         },
         infoBadge: {
-            paddingHorizontal: tokens.spacing.sm,
-            paddingVertical: tokens.spacing.xs / 2,
-            borderRadius: tokens.borders.radius.full,
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+            borderRadius: 10,
         },
         badgeText: {
-            fontSize: tokens.typography.caption.fontSize,
+            fontSize: 10,
             fontWeight: '600',
-            color: tokens.colors.neutral.white,
+            color: '#FFFFFF',
         },
         infoBadgeText: {
-            fontSize: tokens.typography.caption.fontSize,
+            fontSize: 10,
             fontWeight: '600',
-            color: tokens.colors.neutral.gray900,
         },
         actions: { 
             flexDirection: 'row', 
-            gap: tokens.spacing.sm,
+            gap: 8,
         },
         actionButton: {
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
+            borderRadius: 18,
             justifyContent: 'center',
             alignItems: 'center',
         },
         modalOverlay: {
             flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
         },
         modal: { 
-            width: '90%',
-            maxHeight: '80%',
-            padding: tokens.spacing.lg,
-            borderRadius: tokens.borders.radius.large,
+            width: '95%',
+            maxWidth: 500,
+            minHeight: 200,
+            padding: 24,
+            borderRadius: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.25,
+            shadowRadius: 20,
+            elevation: 10,
         },
         modalTitle: {
-            fontSize: tokens.typography.h2.fontSize,
-            fontWeight: tokens.typography.h2.fontWeight,
-            marginBottom: tokens.spacing.md,
+            fontSize: 24,
+            fontWeight: '700',
+            marginBottom: 16,
         },
-
         modalActions: { 
             flexDirection: 'row', 
             justifyContent: 'flex-end', 
-            marginTop: tokens.spacing.md, 
-            gap: tokens.spacing.sm,
+            marginTop: 16, 
+            gap: 12,
         },
     }), [tokens]);
 
     const renderUserItem = ({ item }: { item: UserData }) => (
-        <Card variant="glassmorphic" style={styles.card}>
+        <View style={[styles.card, { backgroundColor: getSurfaceColor() }]}>
             <View style={styles.cardContent}>
                 <View style={styles.userInfo}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={[styles.userName, { color: getTextColor() }]}>{item.full_name || 'No Name'}</Text>
                         {!item.is_verified && (
                             <View style={[styles.badge, { backgroundColor: tokens.colors.warning.main }]}>
-                                <Ionicons name="alert-circle" size={16} color="white" />
+                                <Ionicons name="alert-circle" size={14} color="white" />
                             </View>
                         )}
                     </View>
@@ -651,180 +741,240 @@ export default function UserManagement() {
                         </View>
                         {item.is_verified ? (
                             <View style={[styles.statusBadge, { backgroundColor: tokens.colors.success.main }]}>
-                                <Ionicons name="checkmark-circle" size={12} color="white" />
+                                <Ionicons name="checkmark-circle" size={10} color="white" />
                                 <Text style={styles.badgeText}>Verified</Text>
                             </View>
                         ) : (
                             <View style={[styles.statusBadge, { backgroundColor: tokens.colors.warning.main }]}>
-                                <Ionicons name="alert-circle" size={12} color="white" />
+                                <Ionicons name="alert-circle" size={10} color="white" />
                                 <Text style={styles.badgeText}>Pending</Text>
                             </View>
                         )}
                         {item.role === 'teacher' && item.department && (
                             <View style={[styles.infoBadge, { backgroundColor: tokens.colors.neutral.gray200 }]}>
-                                <Text style={styles.infoBadgeText}>{item.department}</Text>
+                                <Text style={[styles.infoBadgeText, { color: getTextColor() }]}>{item.department}</Text>
                             </View>
                         )}
                         {item.role === 'student' && item.enrollment_number && (
                             <View style={[styles.infoBadge, { backgroundColor: tokens.colors.neutral.gray200 }]}>
-                                <Text style={styles.infoBadgeText}>{item.enrollment_number}</Text>
+                                <Text style={[styles.infoBadgeText, { color: getTextColor() }]}>{item.enrollment_number}</Text>
                             </View>
                         )}
                     </View>
                 </View>
                 <View style={styles.actions}>
                     {!item.is_verified ? (
-                        <TouchableOpacity onPress={() => handleVerifyUser(item.id)} style={styles.actionButton}>
-                            <Ionicons name="checkmark-circle" size={24} color={tokens.colors.success.main} />
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setUserToVerify(item);
+                                setVerifyConfirmVisible(true);
+                            }} 
+                            style={styles.actionButton}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="checkmark-circle" size={22} color={tokens.colors.success.main} />
                         </TouchableOpacity>
                     ) : item.role !== 'admin' && (
-                        <TouchableOpacity onPress={() => handleUnverifyUser(item.id)} style={styles.actionButton}>
-                            <Ionicons name="close-circle" size={24} color={tokens.colors.warning.main} />
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setUserToVerify(item);
+                                setUnverifyConfirmVisible(true);
+                            }} 
+                            style={styles.actionButton}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="close-circle" size={22} color={tokens.colors.warning.main} />
                         </TouchableOpacity>
                     )}
-                    <TouchableOpacity onPress={() => openEditModal(item)} style={styles.actionButton}>
-                        <Ionicons name="pencil" size={24} color={tokens.colors.primary.main} />
+                    <TouchableOpacity 
+                        onPress={() => openEditModal(item)} 
+                        style={styles.actionButton}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="pencil" size={20} color={tokens.colors.primary.main} />
                     </TouchableOpacity>
                     {item.role !== 'admin' && (
-                        <TouchableOpacity onPress={() => {
-                            setUserToDelete(item);
-                            setDeleteConfirmVisible(true);
-                        }} style={styles.actionButton}>
-                            <Ionicons name="trash" size={24} color={tokens.colors.error.main} />
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setUserToDelete(item);
+                                setDeleteConfirmVisible(true);
+                            }} 
+                            style={styles.actionButton}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="trash" size={20} color={tokens.colors.error.main} />
                         </TouchableOpacity>
                     )}
                 </View>
             </View>
-        </Card>
+        </View>
     );
 
     return (
-        <GradientBackground variant="admin">
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <View>
+        <View style={[styles.mainContainer, { backgroundColor: getBackgroundColor() }]}>
+            <StatusBar 
+                barStyle="light-content" 
+                backgroundColor={tokens.colors.roles.admin.main} 
+                translucent={false}
+            />
+            {/* Purple Header Section */}
+            <View style={[styles.header, { backgroundColor: tokens.colors.roles.admin.main }]}>
+                <View style={styles.headerRow}>
+                    <View style={styles.headerContent}>
                         <Text style={styles.headerTitle}>User Management</Text>
                         <Text style={styles.headerSubtitle}>Manage users and roles</Text>
                     </View>
-                    <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
-                        <TouchableOpacity onPress={handleExportUsers} style={styles.headerButton}>
-                            <Ionicons name="download-outline" size={24} color={tokens.colors.neutral.white} />
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity onPress={handleExportUsers} style={styles.headerButton} activeOpacity={0.7}>
+                            <Ionicons name="download-outline" size={22} color="#FFFFFF" />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={styles.createButton}>
-                            <Ionicons name="add" size={20} color="white" />
+                        <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={styles.headerButton} activeOpacity={0.7}>
+                            <Ionicons name="add" size={22} color="#FFFFFF" />
                         </TouchableOpacity>
                     </View>
                 </View>
-
-            {/* Statistics */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsContainer}>
-                <GlassmorphicWidget style={styles.statCard}>
-                    <View style={styles.statContent}>
-                        <Ionicons name="people" size={24} color={tokens.colors.info.main} />
-                        <Text style={styles.statValue}>{userStats.total}</Text>
-                        <Text style={styles.statLabel}>Total Users</Text>
-                    </View>
-                </GlassmorphicWidget>
-                <GlassmorphicWidget style={styles.statCard}>
-                    <View style={styles.statContent}>
-                        <Ionicons name="shield-checkmark" size={24} color={tokens.colors.roles.admin.main} />
-                        <Text style={styles.statValue}>{userStats.admins}</Text>
-                        <Text style={styles.statLabel}>Admins</Text>
-                    </View>
-                </GlassmorphicWidget>
-                <GlassmorphicWidget style={styles.statCard}>
-                    <View style={styles.statContent}>
-                        <Ionicons name="briefcase" size={24} color={tokens.colors.roles.teacher.main} />
-                        <Text style={styles.statValue}>{userStats.teachers}</Text>
-                        <Text style={styles.statLabel}>Teachers</Text>
-                    </View>
-                </GlassmorphicWidget>
-                <GlassmorphicWidget style={styles.statCard}>
-                    <View style={styles.statContent}>
-                        <Ionicons name="school" size={24} color={tokens.colors.roles.student.main} />
-                        <Text style={styles.statValue}>{userStats.students}</Text>
-                        <Text style={styles.statLabel}>Students</Text>
-                    </View>
-                </GlassmorphicWidget>
-                <GlassmorphicWidget style={styles.statCard}>
-                    <View style={styles.statContent}>
-                        <Ionicons name="alert-circle" size={24} color={tokens.colors.warning.main} />
-                        <Text style={styles.statValue}>{userStats.unverified}</Text>
-                        <Text style={styles.statLabel}>Unverified</Text>
-                    </View>
-                </GlassmorphicWidget>
-            </ScrollView>
-
-            {/* Error Message */}
-            {dataError && (
-                <View style={{ paddingHorizontal: tokens.spacing.md, marginBottom: tokens.spacing.sm }}>
-                    <Card variant="glassmorphic" style={{ backgroundColor: tokens.colors.error.light }}>
-                        <View style={{ padding: tokens.spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={{ color: tokens.colors.error.main, flex: 1 }}>{dataError}</Text>
-                            <TouchableOpacity onPress={fetchOrganizationalData}>
-                                <Text style={{ color: tokens.colors.primary.main, fontWeight: '600' }}>Retry</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </Card>
-                </View>
-            )}
-
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-                <Input
-                    label="Search"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    icon={<Ionicons name="search" size={20} color={tokens.colors.neutral.gray500} />}
-                    style={{ marginBottom: 0 }}
-                />
             </View>
 
-            <SegmentedButtons
-                value={filterRole}
-                onValueChange={setFilterRole}
-                buttons={[
-                    { value: 'all', label: 'All' },
-                    { value: 'admin', label: 'Admins' },
-                    { value: 'teacher', label: 'Teachers' },
-                    { value: 'student', label: 'Students' },
-                ]}
-                style={styles.filterButtons}
-            />
-
-            <SegmentedButtons
-                value={filterVerification}
-                onValueChange={setFilterVerification}
-                buttons={[
-                    { value: 'all', label: 'All' },
-                    { value: 'verified', label: 'Verified' },
-                    { value: 'unverified', label: 'Unverified' },
-                ]}
-                style={styles.filterButtons}
-            />
-
-            {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <LoadingSpinner size="large" />
+            {/* Scrollable Content */}
+            <ScrollView style={[styles.scrollContainer, { backgroundColor: getBackgroundColor() }]} showsVerticalScrollIndicator={false}>
+                {/* Statistics */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Overview</Text>
+                    <View style={styles.statsGrid}>
+                        <View style={[styles.statCard, { backgroundColor: getSurfaceColor() }]}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.info.main}15` }]}>
+                                    <Ionicons name="people" size={20} color={tokens.colors.info.main} />
+                                </View>
+                                <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Total Users</Text>
+                            </View>
+                            <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.total}</Text>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: getSurfaceColor() }]}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.roles.admin.main}15` }]}>
+                                    <Ionicons name="shield-checkmark" size={20} color={tokens.colors.roles.admin.main} />
+                                </View>
+                                <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Admins</Text>
+                            </View>
+                            <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.admins}</Text>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: getSurfaceColor() }]}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.roles.teacher.main}15` }]}>
+                                    <Ionicons name="briefcase" size={20} color={tokens.colors.roles.teacher.main} />
+                                </View>
+                                <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Teachers</Text>
+                            </View>
+                            <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.teachers}</Text>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: getSurfaceColor() }]}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.roles.student.main}15` }]}>
+                                    <Ionicons name="school" size={20} color={tokens.colors.roles.student.main} />
+                                </View>
+                                <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Students</Text>
+                            </View>
+                            <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.students}</Text>
+                        </View>
+                        <View style={[styles.statCard, { backgroundColor: getSurfaceColor() }]}>
+                            <View style={styles.statHeader}>
+                                <View style={[styles.statIconContainer, { backgroundColor: `${tokens.colors.warning.main}15` }]}>
+                                    <Ionicons name="alert-circle" size={20} color={tokens.colors.warning.main} />
+                                </View>
+                                <Text style={[styles.statLabel, { color: getTextSecondaryColor() }]}>Unverified</Text>
+                            </View>
+                            <Text style={[styles.statValue, { color: getTextColor() }]}>{userStats.unverified}</Text>
+                        </View>
+                    </View>
                 </View>
-            ) : (
-                <FlatList
-                    data={filteredUsers}
-                    renderItem={renderUserItem}
-                    keyExtractor={item => item.id}
-                    contentContainerStyle={styles.list}
-                    ListEmptyComponent={<EmptyState icon="account-off" title="No users found" />}
-                />
-            )}
+
+                {/* Error Message */}
+                {dataError && (
+                    <View style={styles.section}>
+                        <View style={[styles.errorCard, { backgroundColor: tokens.colors.error.light }]}>
+                            <View style={styles.errorContent}>
+                                <Text style={[styles.errorText, { color: tokens.colors.error.main }]}>{dataError}</Text>
+                                <TouchableOpacity onPress={fetchOrganizationalData}>
+                                    <Text style={[styles.retryText, { color: tokens.colors.primary.main }]}>Retry</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
+                {/* Search and Filters */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: getTextColor() }]}>Filter Users</Text>
+                    <View style={styles.searchContainer}>
+                        <Input
+                            label=""
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            placeholder="Search by name, email, or enrollment..."
+                            icon={<Ionicons name="search" size={20} color={tokens.colors.neutral.gray500} />}
+                            style={{ marginBottom: 0 }}
+                        />
+                    </View>
+
+                    <View style={styles.filterButtons}>
+                        <SegmentedButtons
+                            value={filterRole}
+                            onValueChange={setFilterRole}
+                            buttons={[
+                                { value: 'all', label: 'All' },
+                                { value: 'admin', label: 'Admins' },
+                                { value: 'teacher', label: 'Teachers' },
+                                { value: 'student', label: 'Students' },
+                            ]}
+                            density="small"
+                        />
+                    </View>
+
+                    <View style={styles.filterButtons}>
+                        <SegmentedButtons
+                            value={filterVerification}
+                            onValueChange={setFilterVerification}
+                            buttons={[
+                                { value: 'all', label: 'All' },
+                                { value: 'verified', label: 'Verified' },
+                                { value: 'unverified', label: 'Unverified' },
+                            ]}
+                            density="small"
+                        />
+                    </View>
+                </View>
+
+                {/* User List */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: getTextColor() }]}>
+                        Users ({filteredUsers.length})
+                    </Text>
+                    {loading ? (
+                        <View style={styles.loadingContainer}>
+                            <LoadingSpinner size="large" />
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={filteredUsers}
+                            renderItem={renderUserItem}
+                            keyExtractor={item => item.id}
+                            contentContainerStyle={styles.list}
+                            ListEmptyComponent={<EmptyState icon="account-off" title="No users found" />}
+                            scrollEnabled={false}
+                        />
+                    )}
+                </View>
 
             {/* Edit User Modal */}
             <Modal visible={visible} onRequestClose={() => setVisible(false)} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modal, { backgroundColor: getSurfaceColor() }]}>
-                        <KeyboardAwareScrollView 
-                            contentContainerStyle={{ padding: tokens.spacing.md }}
-                            extraScrollHeight={30}
-                        >
+                    <KeyboardAwareScrollView 
+                        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+                        extraScrollHeight={50}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <View style={[styles.modal, { backgroundColor: getSurfaceColor() }]}>
                             <Text style={[styles.modalTitle, { color: getTextColor() }]}>Edit User</Text>
                             
                             <Input 
@@ -833,150 +983,217 @@ export default function UserManagement() {
                                 onChangeText={setEditName} 
                             />
 
-                        <EnhancedPicker
-                            label="Role"
-                            value={editRole}
-                            items={[
-                                { label: 'Student', value: 'student' },
-                                { label: 'Teacher', value: 'teacher' },
-                                { label: 'Admin', value: 'admin' },
-                            ]}
-                            onValueChange={(value) => setEditRole(value as any)}
-                            testID="edit-role-picker"
-                        />
-
-                        {editRole === 'teacher' && (
                             <EnhancedPicker
-                                label="Department"
-                                value={editDepartment}
-                                items={departments.map(dept => ({ label: dept.name, value: dept.name }))}
-                                onValueChange={setEditDepartment}
-                                disabled={loadingData}
-                                testID="edit-department-picker"
+                                label="Role"
+                                value={editRole}
+                                items={[
+                                    { label: 'Student', value: 'student' },
+                                    { label: 'Teacher', value: 'teacher' },
+                                    { label: 'Admin', value: 'admin' },
+                                ]}
+                                onValueChange={(value) => setEditRole(value as any)}
+                                testID="edit-role-picker"
                             />
-                        )}
 
-                        {editRole === 'student' && (
-                            <>
-                                <Input 
-                                    label="Enrollment Number *" 
-                                    value={editEnrollment} 
-                                    onChangeText={setEditEnrollment} 
-                                />
-                                <EnhancedPicker
-                                    label="Class Level"
-                                    value={editClassLevel}
-                                    items={classes.map(c => ({ label: c.name, value: c.value }))}
-                                    onValueChange={setEditClassLevel}
+                            {editRole === 'teacher' && (
+                                <SelectPicker
+                                    label="Department"
+                                    value={editDepartment}
+                                    items={DEPARTMENTS.map(dept => ({ 
+                                        label: dept.name, 
+                                        value: dept.name,
+                                        description: dept.description,
+                                        icon: dept.icon
+                                    }))}
+                                    onValueChange={setEditDepartment}
                                     disabled={loadingData}
-                                    testID="edit-class-level-picker"
+                                    variant="department"
+                                    searchable={true}
+                                    testID="edit-department-picker"
                                 />
-                                {editClassLevel?.startsWith('grad_year') && (
-                                    <EnhancedPicker
-                                        label="Branch"
-                                        value={editBranch}
-                                        items={editBranches.map(branch => ({ label: branch.name, value: branch.name }))}
-                                        onValueChange={setEditBranch}
-                                        disabled={loadingData}
-                                        testID="edit-branch-picker"
-                                    />
-                                )}
-                            </>
-                        )}
+                            )}
 
-                        <View style={styles.modalActions}>
-                            <Button variant="secondary" onPress={() => setVisible(false)} style={{ marginRight: tokens.spacing.sm }}>
-                                Cancel
-                            </Button>
-                            <Button variant="primary" onPress={handleSave} loading={saving}>
-                                Save
-                            </Button>
+                            {editRole === 'student' && (
+                                <>
+                                    <Input 
+                                        label="Enrollment Number *" 
+                                        value={editEnrollment} 
+                                        onChangeText={setEditEnrollment} 
+                                    />
+                                    <SelectPicker
+                                        label="Class Level"
+                                        value={editClassLevel}
+                                        items={CLASS_LEVELS.map(c => ({ 
+                                            label: c.label, 
+                                            value: c.value,
+                                            description: c.description,
+                                            icon: c.icon
+                                        }))}
+                                        onValueChange={setEditClassLevel}
+                                        disabled={loadingData}
+                                        variant="academic"
+                                        searchable={true}
+                                        testID="edit-class-level-picker"
+                                    />
+                                    {editClassLevel?.startsWith('grad_year') && (
+                                        <EnhancedPicker
+                                            label="Branch"
+                                            value={editBranch}
+                                            items={editBranches.map(branch => ({ label: branch.name, value: branch.name }))}
+                                            onValueChange={setEditBranch}
+                                            disabled={loadingData}
+                                            testID="edit-branch-picker"
+                                        />
+                                    )}
+                                </>
+                            )}
+
+                            <View style={styles.modalActions}>
+                                <Button variant="secondary" onPress={() => setVisible(false)} style={{ marginRight: tokens.spacing.sm }}>
+                                    Cancel
+                                </Button>
+                                <Button variant="primary" onPress={handleSave} loading={saving}>
+                                    Save
+                                </Button>
+                            </View>
                         </View>
-                        </KeyboardAwareScrollView>
-                    </View>
+                    </KeyboardAwareScrollView>
                 </View>
             </Modal>
 
             {/* Create User Modal */}
             <Modal visible={createModalVisible} onRequestClose={() => setCreateModalVisible(false)} transparent animationType="slide">
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modal, { backgroundColor: getSurfaceColor() }]}>
-                        <KeyboardAwareScrollView 
-                            contentContainerStyle={{ padding: tokens.spacing.md }}
-                            extraScrollHeight={30}
-                        >
+                    <KeyboardAwareScrollView 
+                        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+                        extraScrollHeight={50}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <View style={[styles.modal, { backgroundColor: getSurfaceColor() }]}>
                             <Text style={[styles.modalTitle, { color: getTextColor() }]}>Create New User</Text>
 
-                        <SegmentedButtons
-                            value={newUserRole}
-                            onValueChange={(value) => setNewUserRole(value as any)}
-                            buttons={[
-                                { value: 'student', label: 'Student' },
-                                { value: 'teacher', label: 'Teacher' },
-                            ]}
-                            style={{ marginBottom: 15 }}
-                        />
-
-                        <Input label="Full Name *" value={newUserName} onChangeText={setNewUserName} />
-                        <Input label="Email *" value={newUserEmail} onChangeText={setNewUserEmail} autoCapitalize="none" keyboardType="email-address" />
-                        <Input label="Password *" value={newUserPassword} onChangeText={setNewUserPassword} secureTextEntry />
-
-                        {newUserRole === 'teacher' && (
-                            <EnhancedPicker
-                                label="Department"
-                                value={newUserDepartment}
-                                items={departments.map(dept => ({ label: dept.name, value: dept.name }))}
-                                onValueChange={setNewUserDepartment}
-                                disabled={loadingData}
-                                testID="new-department-picker"
+                            <SegmentedButtons
+                                value={newUserRole}
+                                onValueChange={(value) => setNewUserRole(value as any)}
+                                buttons={[
+                                    { value: 'student', label: 'Student' },
+                                    { value: 'teacher', label: 'Teacher' },
+                                ]}
+                                style={{ marginBottom: 15 }}
                             />
-                        )}
 
-                        {newUserRole === 'student' && (
-                            <>
-                                <Input label="Enrollment Number *" value={newUserEnrollment} onChangeText={setNewUserEnrollment} />
-                                <EnhancedPicker
-                                    label="Class Level"
-                                    value={newUserClassLevel}
-                                    items={classes.map(c => ({ label: c.name, value: c.value }))}
-                                    onValueChange={setNewUserClassLevel}
+                            <Input label="Full Name *" value={newUserName} onChangeText={setNewUserName} />
+                            <Input label="Email *" value={newUserEmail} onChangeText={setNewUserEmail} autoCapitalize="none" keyboardType="email-address" />
+                            <Input 
+                                label="Password *" 
+                                value={newUserPassword} 
+                                onChangeText={setNewUserPassword} 
+                                secureTextEntry={!showNewUserPassword}
+                                rightIcon={
+                                    <TouchableOpacity onPress={() => setShowNewUserPassword(!showNewUserPassword)}>
+                                        <Ionicons 
+                                            name={showNewUserPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                            size={24} 
+                                            color={tokens.colors.neutral.gray500} 
+                                        />
+                                    </TouchableOpacity>
+                                }
+                            />
+
+                            {newUserRole === 'teacher' && (
+                                <SelectPicker
+                                    label="Department"
+                                    value={newUserDepartment}
+                                    items={DEPARTMENTS.map(dept => ({ 
+                                        label: dept.name, 
+                                        value: dept.name,
+                                        description: dept.description,
+                                        icon: dept.icon
+                                    }))}
+                                    onValueChange={setNewUserDepartment}
                                     disabled={loadingData}
-                                    testID="new-class-level-picker"
+                                    variant="department"
+                                    searchable={true}
+                                    testID="new-department-picker"
                                 />
-                                {newUserClassLevel?.startsWith('grad_year') && (
-                                    <EnhancedPicker
-                                        label="Branch"
-                                        value={newUserBranch}
-                                        items={branches.map(branch => ({ label: branch.name, value: branch.name }))}
-                                        onValueChange={setNewUserBranch}
-                                        disabled={loadingData}
-                                        testID="new-branch-picker"
-                                    />
-                                )}
-                            </>
-                        )}
+                            )}
 
-                        <View style={styles.modalActions}>
-                            <Button variant="secondary" onPress={() => setCreateModalVisible(false)} style={{ marginRight: tokens.spacing.sm }}>
-                                Cancel
-                            </Button>
-                            <Button variant="primary" onPress={handleCreateUser} loading={creating}>
-                                Create
-                            </Button>
+                            {newUserRole === 'student' && (
+                                <>
+                                    <Input label="Enrollment Number *" value={newUserEnrollment} onChangeText={setNewUserEnrollment} />
+                                    <SelectPicker
+                                        label="Class Level"
+                                        value={newUserClassLevel}
+                                        items={CLASS_LEVELS.map(c => ({ 
+                                            label: c.label, 
+                                            value: c.value,
+                                            description: c.description,
+                                            icon: c.icon
+                                        }))}
+                                        onValueChange={setNewUserClassLevel}
+                                        disabled={loadingData}
+                                        variant="academic"
+                                        searchable={true}
+                                        testID="new-class-level-picker"
+                                    />
+                                    {newUserClassLevel?.startsWith('grad_year') && (
+                                        <EnhancedPicker
+                                            label="Branch"
+                                            value={newUserBranch}
+                                            items={branches.map(branch => ({ label: branch.name, value: branch.name }))}
+                                            onValueChange={setNewUserBranch}
+                                            disabled={loadingData}
+                                            testID="new-branch-picker"
+                                        />
+                                    )}
+                                </>
+                            )}
+
+                            <View style={styles.modalActions}>
+                                <Button variant="secondary" onPress={() => setCreateModalVisible(false)} style={{ marginRight: tokens.spacing.sm }}>
+                                    Cancel
+                                </Button>
+                                <Button variant="primary" onPress={handleCreateUser} loading={creating}>
+                                    Create
+                                </Button>
+                            </View>
                         </View>
-                        </KeyboardAwareScrollView>
-                    </View>
+                    </KeyboardAwareScrollView>
                 </View>
             </Modal>
 
-            <ConfirmDialog
-                visible={deleteConfirmVisible}
-                title="Delete User"
-                message={`Are you sure you want to delete ${userToDelete?.full_name}? This action cannot be undone.`}
-                onConfirm={handleDelete}
-                onCancel={() => setDeleteConfirmVisible(false)}
-            />
-            </View>
-        </GradientBackground>
+                <ConfirmDialog
+                    visible={deleteConfirmVisible}
+                    title="Delete User"
+                    message={`Are you sure you want to delete ${userToDelete?.full_name}? This action cannot be undone.`}
+                    onConfirm={handleDelete}
+                    onCancel={() => setDeleteConfirmVisible(false)}
+                />
+
+                <ConfirmDialog
+                    visible={verifyConfirmVisible}
+                    title="Verify User"
+                    message={`Are you sure you want to verify ${userToVerify?.full_name}? This will grant them access to the system.`}
+                    confirmText="Verify"
+                    onConfirm={handleVerifyUser}
+                    onCancel={() => {
+                        setVerifyConfirmVisible(false);
+                        setUserToVerify(null);
+                    }}
+                />
+
+                <ConfirmDialog
+                    visible={unverifyConfirmVisible}
+                    title="Unverify User"
+                    message={`Are you sure you want to unverify ${userToVerify?.full_name}? This will revoke their access to the system.`}
+                    confirmText="Unverify"
+                    onConfirm={handleUnverifyUser}
+                    onCancel={() => {
+                        setUnverifyConfirmVisible(false);
+                        setUserToVerify(null);
+                    }}
+                />
+            </ScrollView>
+        </View>
     );
 }

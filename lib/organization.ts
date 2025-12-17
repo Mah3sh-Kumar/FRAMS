@@ -285,9 +285,14 @@ export async function getBranches(
   classId?: string,
   includeInactive: boolean = false
 ): Promise<{ data: BranchItem[] | null; error: string | null }> {
-  // Branches table doesn't exist in current schema
-  // Return empty array for now
-  return { data: [], error: null };
+  try {
+    // For now, return empty array since branches table doesn't exist
+    // This prevents null pointer exceptions in UI components
+    return { data: [], error: null };
+  } catch (error: any) {
+    console.error('Error fetching branches:', error);
+    return { data: [], error: getOrgErrorMessage(error) };
+  }
 }
 
 /**
@@ -340,9 +345,14 @@ export async function canDeleteBranch(
 export async function getDepartments(
   includeInactive: boolean = false
 ): Promise<{ data: DepartmentItem[] | null; error: string | null }> {
-  // Departments table doesn't exist in current schema
-  // Return empty array for now
-  return { data: [], error: null };
+  try {
+    // For now, return empty array since departments table doesn't exist
+    // This prevents null pointer exceptions in UI components
+    return { data: [], error: null };
+  } catch (error: any) {
+    console.error('Error fetching departments:', error);
+    return { data: [], error: getOrgErrorMessage(error) };
+  }
 }
 
 /**

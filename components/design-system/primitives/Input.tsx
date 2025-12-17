@@ -35,6 +35,8 @@ export interface InputProps extends Omit<TextInputProps, 'style'> {
   secureTextEntry?: boolean;
   /** Optional icon component */
   icon?: React.ReactNode;
+  /** Optional right icon component (for password visibility toggle) */
+  rightIcon?: React.ReactNode;
   /** Optional custom container style */
   style?: ViewStyle;
   /** Optional test ID */
@@ -61,6 +63,7 @@ export default function Input({
   disabled = false,
   secureTextEntry = false,
   icon,
+  rightIcon,
   style,
   testID,
   ...textInputProps
@@ -140,7 +143,11 @@ export default function Input({
             onBlur={handleBlur}
             editable={!disabled}
             secureTextEntry={secureTextEntry}
-            style={[styles.input, { color: textColor, marginLeft: icon ? 8 : 0 }]}
+            style={[styles.input, { 
+              color: textColor, 
+              marginLeft: icon ? 8 : 0,
+              marginRight: rightIcon ? 8 : 0
+            }]}
             placeholderTextColor={getTextSecondaryColor()}
             testID={testID}
             accessible={true}
@@ -152,6 +159,7 @@ export default function Input({
             autoCorrect={false}
             {...textInputProps}
           />
+          {rightIcon && <View style={styles.rightIconContainer}>{rightIcon}</View>}
         </View>
       </TouchableWithoutFeedback>
       {error && (
@@ -198,5 +206,8 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginRight: 8,
+  },
+  rightIconContainer: {
+    marginLeft: 8,
   },
 });
