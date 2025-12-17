@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import * as SecureStore from 'expo-secure-store';
 import type { StackScreenProps } from '@react-navigation/stack';
@@ -134,6 +135,15 @@ export default function SignInScreen({ navigation }: Props) {
                         disabled={isSubmitting || loading}
                         error={!!errorMsg && !password ? 'Password is required' : undefined}
                         returnKeyType="done"
+                        rightIcon={
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                <Ionicons 
+                                    name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                    size={24} 
+                                    color={tokens.colors.neutral.gray500} 
+                                />
+                            </TouchableOpacity>
+                        }
                     />
 
                     {errorMsg ? (

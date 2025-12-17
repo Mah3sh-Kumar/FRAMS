@@ -27,5 +27,6 @@ export type RootStackParamList = {
 
     // Admin
     UserManagement: undefined;
+    OrganizationManager: undefined;
     Reports: undefined;
 };

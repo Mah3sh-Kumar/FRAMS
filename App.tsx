@@ -111,8 +111,38 @@ function Navigation() {
     );
   }
 
+  const darkTheme = {
+    dark: true,
+    colors: {
+      primary: '#6366f1',
+      background: '#0f172a',
+      card: '#1e293b',
+      text: '#f1f5f9',
+      border: '#334155',
+      notification: '#ef4444',
+    },
+    fonts: {
+      regular: {
+        fontFamily: 'System',
+        fontWeight: '400' as const,
+      },
+      medium: {
+        fontFamily: 'System',
+        fontWeight: '500' as const,
+      },
+      bold: {
+        fontFamily: 'System',
+        fontWeight: '700' as const,
+      },
+      heavy: {
+        fontFamily: 'System',
+        fontWeight: '900' as const,
+      },
+    },
+  };
+
   return (
-    <NavigationContainer ref={navigationRef} theme={mode === 'dark' ? { dark: true, colors: { primary: '#6366f1', background: '#0f172a', card: '#1e293b', text: '#f1f5f9', border: '#334155', notification: '#ef4444' } } : undefined}>
+    <NavigationContainer ref={navigationRef} theme={mode === 'dark' ? darkTheme : undefined}>
       <Stack.Navigator screenOptions={{ headerStyle: { backgroundColor: mode === 'dark' ? '#1e293b' : '#ffffff' }, headerTintColor: mode === 'dark' ? '#f1f5f9' : '#000000' }}>
         {!session || !session.user ? (
           // Auth Stack - Unauthenticated Users
@@ -197,9 +227,9 @@ function Navigation() {
             {/* Admin Stack */}
             {role === 'admin' && (
               <>
-                <Stack.Screen name="UserManagement" component={UserManagement} />
-                <Stack.Screen name="OrganizationManager" component={OrganizationManager} options={{ title: 'Organization Manager' }} />
-                <Stack.Screen name="Reports" component={ReportsScreen} />
+                <Stack.Screen name="UserManagement" component={UserManagement} options={{ headerShown: false }} />
+                <Stack.Screen name="OrganizationManager" component={OrganizationManager} options={{ headerShown: false }} />
+                <Stack.Screen name="Reports" component={ReportsScreen} options={{ headerShown: false }} />
               </>
             )}
           </>

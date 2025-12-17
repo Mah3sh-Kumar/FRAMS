@@ -29,15 +29,20 @@ export default function AdminDashboard() {
         if (!session?.user?.id) return;
 
         try {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('users')
                 .select('full_name')
                 .eq('id', session.user.id)
                 .single();
 
+            if (error) {
+                console.error('Error loading admin name:', error);
+                return;
+            }
+
             if (data?.full_name) {
                 const firstName = data.full_name.split(' ')[0];
-                setAdminName(firstName);
+                setAdminName(firstName || 'Admin');
             }
         } catch (err) {
             console.error('Error loading admin name:', err);
@@ -46,19 +51,34 @@ export default function AdminDashboard() {
 
     const fetchStats = async () => {
         try {
-            const { count: totalUsers } = await supabase.from('users').select('*', { count: 'exact', head: true });
-            const { count: totalStudents } = await supabase.from('students').select('*', { count: 'exact', head: true });
-            const { count: totalTeachers } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
-            const { count: unverifiedUsers } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_verified', false);
+            const [usersResult, studentsResult, teachersResult, unverifiedResult] = await Promise.all([
+                supabase.from('users').select('*', { count: 'exact', head: true }),
+                supabase.from('students').select('*', { count: 'exact', head: true }),
+                supabase.from('teachers').select('*', { count: 'exact', head: true }),
+                supabase.from('users').select('*', { count: 'exact', head: true }).eq('is_verified', false)
+            ]);
+
+            // Check for errors in any of the queries
+            if (usersResult.error) console.error('Error fetching users count:', usersResult.error);
+            if (studentsResult.error) console.error('Error fetching students count:', studentsResult.error);
+            if (teachersResult.error) console.error('Error fetching teachers count:', teachersResult.error);
+            if (unverifiedResult.error) console.error('Error fetching unverified count:', unverifiedResult.error);
 
             setStats({
-                totalUsers: totalUsers || 0,
-                totalStudents: totalStudents || 0,
-                totalTeachers: totalTeachers || 0,
-                unverifiedUsers: unverifiedUsers || 0,
+                totalUsers: usersResult.count || 0,
+                totalStudents: studentsResult.count || 0,
+                totalTeachers: teachersResult.count || 0,
+                unverifiedUsers: unverifiedResult.count || 0,
             });
         } catch (error) {
             console.error('Error fetching stats:', error);
+            // Set default values on error
+            setStats({
+                totalUsers: 0,
+                totalStudents: 0,
+                totalTeachers: 0,
+                unverifiedUsers: 0,
+            });
         } finally {
             setLoading(false);
         }

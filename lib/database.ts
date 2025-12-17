@@ -499,13 +499,17 @@ export async function fetchAssignmentStatistics(assignmentId: string) {
 
         if (error) throw error;
 
+        const validSubmissions = submissions || [];
+        const gradedSubmissions = validSubmissions.filter(s => s.score !== null);
+        
         const stats = {
-            total: submissions?.length || 0,
-            submitted: submissions?.filter(s => s.status !== 'pending').length || 0,
-            graded: submissions?.filter(s => s.status === 'graded').length ||0,
-            pending: submissions?.filter(s => s.status === 'pending').length || 0,
-            averageScore: submissions?.filter(s => s.score !== null)
-                .reduce((acc, s) => acc + (s.score || 0), 0) / (submissions?.filter(s => s.score !== null).length || 1) || 0,
+            total: validSubmissions.length,
+            submitted: validSubmissions.filter(s => s.status !== 'pending').length,
+            graded: validSubmissions.filter(s => s.status === 'graded').length,
+            pending: validSubmissions.filter(s => s.status === 'pending').length,
+            averageScore: gradedSubmissions.length > 0 
+                ? gradedSubmissions.reduce((acc, s) => acc + (s.score || 0), 0) / gradedSubmissions.length 
+                : 0,
         };
 
         return { data: stats, error: null };

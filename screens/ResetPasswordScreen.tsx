@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { validatePassword } from '../lib/validation';
 import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
@@ -173,6 +174,15 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
                             autoCapitalize="none"
                             disabled={isSubmitting}
                             error={!!errorMsg && !password ? 'Password is required' : undefined}
+                            rightIcon={
+                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                    <Ionicons 
+                                        name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                        size={24} 
+                                        color={tokens.colors.neutral.gray500} 
+                                    />
+                                </TouchableOpacity>
+                            }
                         />
 
                         {password ? (
@@ -191,6 +201,15 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
                             autoCapitalize="none"
                             disabled={isSubmitting}
                             error={!!errorMsg && !confirmPassword ? 'Please confirm password' : undefined}
+                            rightIcon={
+                                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                    <Ionicons 
+                                        name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} 
+                                        size={24} 
+                                        color={tokens.colors.neutral.gray500} 
+                                    />
+                                </TouchableOpacity>
+                            }
                         />
 
                         {errorMsg ? (
